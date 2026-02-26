@@ -1,0 +1,76 @@
+.modal_loger,
+.modal_loger_login,
+.modal_loger_register {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex-direction: row-reverse;
+
+    .button_enter,
+    .button_sign {
+        background: #F4ADBD;
+        cursor: pointer;
+        color: #6C0820;
+        font-weight: bold;
+        width: 90px;
+        padding: 20px;
+        margin: 10px;
+    }
+
+    h2 {
+        font-size: 50px !important;
+        margin: 0;
+    }
+}
+
+.log_section {
+    background: white;
+    padding: 20px 30px;
+    width: 300px;
+    border-radius: 10px;
+    position: relative;
+}
+
+.closer:hover {
+    background-color: #f4dcdc36 !important;
+}
+
+.inputs {
+    padding: 10px 14px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    transition: 0.2s;
+    background-color: #5B86CB;
+    margin: 10px;
+    color: #F4DCDC;
+    font-weight: bold;
+}
+
+.inputs:focus {
+    border-color: rgb(93, 159, 188);
+}
+
+.inputs::placeholder {
+    color: rgba(210, 215, 169, 0.545);
+}
+
+.input_section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.button_enter:hover,
+.button_sign:hover {
+    background: #F4DCDC !important;
+}
+
+.button_sign {
+    width: auto !important;
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ua">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Era</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <a href="main.html">
+                <img src="svg/logo.svg" alt="Logo" style="width: 200px;">
+            </a>
+        </div>
+        <div class="menu_container">
+            <button><img src="svg/search.svg" alt="search" onclick="doSearch()"></button>
+            <button><img src="svg/filter.svg" alt="filter" onclick="showFilter()"></button>
+            <button><img src="svg/cart.svg" alt="cart" onclick="openCart()"></button>
+            <button><img src="svg/profile.svg" alt="profile" onclick="openProfile()"></button>
+        </div>
+        <div class="post_menu">
+            <button>Акції</button>
+            <button>Автори</button>
+            <button>Видавництва</button>
+        </div>
+    </header>
+    <div class="main">
+        <div class="start">
+            <h2>Вітаємо в книжковому інтернет-магазині Event Era!</h2>
+            <h3>Ще не впевнені, що саме шукаєте, або маєте конкретну ідею? <br>Наші категорії допоможуть легко
+                орієнтуватися та знайти саме те, що вам до душі.
+            </h3>
+            <!--<img src="svg/arrow.svg" alt="arrow">-->
+        </div>
+        <div class="catalog">
+            <button><img src="svg/prev.svg" alt="prev" onclick="previous()"></button>
+            <div class="catalog_section"></div>
+            <button><img src="svg/next.svg" alt="next" onclick="next()"></button>
+        </div>
+        <div class="support">
+        </div>
+    </div>
+    <footer></footer>
+</body>
+
+</html>

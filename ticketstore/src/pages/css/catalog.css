@@ -1,0 +1,133 @@
+.category {
+    background: linear-gradient(to right, #6C0820, #F4ADBD);
+    color: #F4DCDC;
+    padding: 5px 15px;
+    font-size: 20px;
+}
+
+
+.catalog_ul {
+    display: flex;
+    justify-content: space-evenly;
+    margin: 0;
+    width: auto;
+    padding: 0;
+    align-items: center;
+    font-family: 'Lucida Sans', 'Franklin Gothic Medium';
+    font-weight: 600;
+
+    .show-more {
+        background-color: #3E5D93;
+        height: 30px;
+        width: 8vw;
+        color: #F4DCDC;
+        padding: 10px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 15px 50px 15px;
+        font-size: 30px;
+    }
+}
+
+.Паперова {
+    border-radius: 0 10px 10px 0;
+    border: #6C0820 5px solid;
+}
+
+.Електронна {
+    border-radius: 20px;
+    border: #F4DCDC 6px solid;
+}
+
+.main-page {
+    width: 99%;
+    margin-bottom: 40px;
+}
+
+.short_info {
+    text-align: center;
+    color: black;
+}
+
+.catalog_li {
+    img {
+        width: 8vw;
+    }
+
+    a {
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+
+    font-size: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 12px;
+    padding: 10px;
+    margin: 0 !important;
+}
+
+.show-more:hover {
+    background: #5B86CB;
+}
+
+.catalog_li:hover {
+    box-shadow: 0 0 7px #254c69cc;
+    background-color: #3E5D933c;
+}
+
+.catalog_section {
+    border-radius: 0 0 20px 20px;
+    background-color: #F4ADBD;
+    flex: 1;
+}
+
+.catalog {
+    margin-top: 30px;
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    button {
+        padding: 20px;
+
+        img {
+            width: 35px;
+            height: 35px;
+        }
+    }
+}
+
+.icon {
+    width: 30%;
+    height: 30%;
+
+    img {
+        width: 100%;
+        height: 100%;
+    }
+}
+
+button:disabled {
+    cursor: default;
+}
+
+.nav-btn-next img,
+.nav-btn-prev img {
+    transition: opacity 0.2s ease;
+}
+
+.nav-btn-next:not(:disabled):hover img {
+    content: url("/svg/next-hover.svg");
+}
+
+.nav-btn-prev:not(:disabled):hover img {
+    content: url("/svg/prev-hover.svg");
+}

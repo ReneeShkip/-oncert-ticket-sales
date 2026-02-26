@@ -1,0 +1,59 @@
+.alert_section {
+    position: fixed;
+    z-index: 100000;
+    display: flex;
+
+    h1 {
+        color: #F4ADBD;
+        text-align: center;
+    }
+
+    .ok_btn {
+        background-color: #F4ADBD;
+        color: #6C0820;
+        border-radius: 15px;
+    }
+}
+
+.just_info {
+    width: 100% !important;
+}
+
+.al_overlay {
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    position: fixed;
+    z-index: 10000;
+    background-color: rgba(0, 0, 0, 0.732);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #F4DCDC;
+
+
+    .closer {
+        margin: 0 !important;
+    }
+}
+
+.alert_info {
+    background-color: #3E5D93;
+    padding: 20px;
+    border-radius: 15px;
+    margin-top: 30px;
+
+    button {
+        font-size: 25px;
+        padding: 0 15px;
+        color: #F4ADBD;
+    }
+}
+
+.al_btns {
+    margin-top: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}

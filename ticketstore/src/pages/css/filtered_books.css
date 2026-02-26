@@ -1,0 +1,65 @@
+.books-page {
+    width: 80vw;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 10px 0 35px 0;
+    background-color: #F4ADBD;
+    border-radius: 20px;
+    align-items: center;
+    justify-content: space-around;
+    padding: 20px;
+    justify-content: none;
+
+    .book_ul {
+        flex-wrap: wrap;
+    }
+
+    .book_li {
+        margin: 10px;
+        width: 180px;
+
+        a {
+            height: 280px;
+        }
+    }
+}
+
+.sorting {
+    display: flex;
+    justify-content: flex-end;
+    width: 80%;
+    margin-top: 20px;
+
+    select,
+    select:focus {
+        width: 90px;
+        border: none;
+        background-color: transparent;
+        font-family: sans-serif;
+        font-size: 25px;
+        outline: none;
+    }
+
+    option {
+        background-color: #F4DCDC;
+        border-radius: 10px;
+        border: #6C0820 1px solid;
+    }
+}
+
+.dis {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+
+    .Паперова {
+        border: #6C08207f 5px solid;
+    }
+
+    .short_info {
+        color: rgba(0, 0, 0, 0.401);
+    }
+
+}
