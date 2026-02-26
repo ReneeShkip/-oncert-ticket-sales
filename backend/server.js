@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: "http://localhost:5174",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type"]
 }));
@@ -20,14 +20,14 @@ const db = mysql.createPool({
     host: "localhost",
     user: "root",
     password: "root1",
-    database: "bookstore",
+    database: "tickets",
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
 });
 
-app.get("/categories", (req, res) => {
-    const query = "SELECT id, name, view_name FROM categories ORDER BY name";
+app.get("/tickets", (req, res) => {
+    const query = "SELECT id, title FROM tickets";
 
     db.query(query, (err, results) => {
         if (err) {

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import './css/style.css';
 import './css/catalog.css';
 import Loading from "./Loading";
-import BooksList from '../components/Booklist';
 
 export default function Catalog() {
     const [categories, setCategories] = useState([]);
@@ -10,7 +9,7 @@ export default function Catalog() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetch('http://localhost:5000/categories')
+        fetch('http://localhost:5000/tickets')
             .then(res => {
                 if (!res.ok) throw new Error('Failed to fetch categories');
                 return res.json();
@@ -34,12 +33,8 @@ export default function Catalog() {
 
     return (
         <div className="main-page">
-            {categories.map(category => (
-                <BooksList
-                    key={category.id}
-                    category={category.id}
-                    categoryName={category.name}
-                />
+            {categories.map(c => (
+                c.title
             ))}
         </div>
     );

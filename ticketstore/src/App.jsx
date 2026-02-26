@@ -5,7 +5,7 @@ import Footer from "./components/Footer";
 import { Outlet } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { UserProvider } from "./context/UserContext.jsx";
-
+import "../src/pages/Book_Details.jsx"
 
 function App() {
 
