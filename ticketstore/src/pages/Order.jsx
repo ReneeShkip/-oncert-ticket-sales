@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect } from "react";
 import { useLocation, useNavigate, NavLink } from "react-router-dom";
 import { UserContext } from "../context/UserContext";
-import Loading from "../pages/Loading"
+import Loading from "./Loading"
 import { CartContext } from "../context/CartContext";
 //import CitySelector from "../components/city_selector";
 import { MoreContext } from "../context/MoreContext";
