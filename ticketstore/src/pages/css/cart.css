@@ -66,7 +66,7 @@
 }
 
 .alternative {
-    width: 200px;
+    width: 250px;
     height: 300px;
     text-align: center;
     display: flex;
@@ -115,7 +115,7 @@
     height: 30px;
     background-color: rgba(155, 189, 162, 0);
     border: none;
-    font-family: sans-serif;
+    font-family: ' ';
     font-size: 25px;
     border-radius: 10px;
 }
@@ -167,7 +167,7 @@
     }
 
     button:disabled {
-        background-color: rgba(149, 172, 153, 0.715);
+        background-color: #f4adbe93;
         cursor: default;
 
         a {

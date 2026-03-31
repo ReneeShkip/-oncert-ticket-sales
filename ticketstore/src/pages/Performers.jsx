@@ -1,22 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { NavLink } from "react-router-dom";
 import Loading from "./Loading";
+import { MoreContext } from "../context/MoreContext";
+import { usePerformers } from "../context/AuthorContext";
+
 
 import "../pages/css/author.css"
 
-export default function Authors() {
-    const [authors, setAuthors] = useState([]);
+export default function Performers() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const { lang, theme } = useContext(MoreContext);
+
+    const [perfomers, setPerfomers] = useState([]);
 
     useEffect(() => {
-        fetch('http://localhost:5000/authors')
+        fetch('http://localhost:5000/organizations')
             .then(res => {
                 if (!res.ok) return <NotFound />;
                 return res.json();
             })
             .then(data => {
-                setAuthors(data);
+                setPerfomers(data);
                 setLoading(false);
             })
             .catch(err => {
@@ -35,18 +40,18 @@ export default function Authors() {
     return (
         <div className="child-page">
             <div className="authors_page">
-                {authors.map(author => (
-                    <div key={author.id} className="author_section">
-                        <NavLink to={`/author/details/${author.id}`}>
+                {perfomers.map(p => (
+                    <div key={p.ID} className="author_section">
+                        <NavLink to={`/performers/details/${p.ID}`}>
                             <div className="photo">
                                 <img
-                                    src={author.photo
-                                        ? `/img/authors/${author.photo}`
+                                    src={p.photo
+                                        ? `/img/covers/${p.photo}`
                                         : '/img/authors/default.png'}
-                                    alt={`${author.first_name} ${author.last_name}`}
+                                    alt={p[`name_${lang}`]}
                                 />
                                 <div className="overlay">
-                                    {author.first_name} {author.last_name}
+                                    {p[`name_${lang}`]}
                                 </div>
                             </div>
                         </NavLink>
@@ -55,7 +60,4 @@ export default function Authors() {
             </div>
         </div>
     );
-
-
-
 }

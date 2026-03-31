@@ -1,13 +1,11 @@
 import { createContext, useState, useEffect, useContext } from "react";
 import { UserContext } from "./UserContext";
-
 export const CartContext = createContext();
 
 export function CartProvider({ children }) {
     const { user, isAuth } = useContext(UserContext);
     const [cart, setCart] = useState([]);
     const [loading, setLoading] = useState(false);
-
     const fetchCart = async () => {
         if (!isAuth || !user?.id) {
             setCart([]);
@@ -30,11 +28,10 @@ export function CartProvider({ children }) {
         fetchCart();
     }, [isAuth, user?.id]);
 
-    const addToCart = async (bookType, quantity = 1) => {
-
+    const addToCart = async (ticket_date_id, quantity = 1) => {
         const body = {
             user_id: user.id,
-            book_id: bookType,
+            ticket_date_id,
             quantity
         };
 
@@ -47,7 +44,9 @@ export function CartProvider({ children }) {
 
             if (!res.ok) throw new Error("Не вдалося додати товар до кошика");
 
+            const data = await res.json();
             await fetchCart();
+
         } catch (err) {
             console.error(err);
         }

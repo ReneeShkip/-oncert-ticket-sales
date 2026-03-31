@@ -2,18 +2,13 @@
     width: 100%;
     display: flex;
     justify-content: space-around;
-    padding: 40px 0;
-
-    align-items: flex-start;
+    align-items: center;
+    flex-direction: column;
 
     .staar {
         border: none;
         width: 23px;
         margin-left: 5px;
-    }
-
-    img {
-        max-width: 300px;
     }
 }
 
@@ -22,16 +17,21 @@
 }
 
 .book-container {
-    width: 20%;
     display: flex;
     justify-content: center;
-    flex-direction: column;
     align-items: center;
+    position: relative;
+    width: 100%;
+    height: 300px;
+    overflow: hidden;
+    border-radius: 0 0 20px 20px;
 
     .book_cover {
-        width: 90%;
-        border-radius: 30px;
-        border: #5B86CB 8px solid;
+        inset: 0;
+        display: block;
+        height: 100%;
+        object-fit: contain;
+        z-index: 1;
     }
 
     .for_stars {
@@ -55,15 +55,22 @@
 }
 
 .buying {
-    background: #5B86CB;
+    background: #6C0820;
     color: #F4DCDC;
     border-radius: 10px;
-    width: 70%;
-    margin-bottom: 20px;
+    font-family: 'MyFont';
+    font-size: 22px;
+    padding: 10px;
+}
+
+.zakl {
+    position: absolute;
+    width: 100%;
 }
 
 .buying:hover {
-    background: #6C0820;
+    background: #F4ADBD;
+    color: #6C0820;
 }
 
 .buying:disabled,
@@ -75,10 +82,15 @@
 
 
 .info {
-    width: 50%;
+    width: 80%;
     display: flex;
     flex-direction: column;
     align-items: center;
+
+    p {
+        font-family: ' ';
+        font-size: 20px;
+    }
 }
 
 h1 {
@@ -155,22 +167,24 @@ p {
 }
 
 .morebtn {
-    font-size: 24px;
+    font-size: 20px;
     color: #6C0820;
     margin-left: 20px;
     padding: 0;
-    height: 26px;
+    height: 22px;
 }
 
 .morebtn:hover {
-    border-bottom: 2px solid #254C69;
+    border-bottom: 2px solid #6c0820;
 }
 
 .types {
     list-style: none;
     display: flex;
-    flex-direction: column;
     align-items: center;
+    padding: 0;
+    width: 100%;
+    justify-content: space-evenly;
 }
 
 .hidden_checkbox {
@@ -183,13 +197,22 @@ p {
     cursor: pointer;
     user-select: none;
     display: inline-block;
-    background-color: rgba(155, 189, 162, 0.397);
+    background-color: #5b86cb81;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.241);
-    border: 2px solid #9BBDA2;
-    width: 110px;
+    border: 2px solid #5B86CB;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: ' ';
 
-    h4 {
-        color: #c16969;
+    h3 {
+        font-size: 30px;
+    }
+
+    h5 {
+        font-size: 15px;
+        margin-bottom: 5px;
+        margin-right: 0;
     }
 }
 
@@ -201,17 +224,51 @@ p {
 }
 
 .hidden_checkbox:checked+.checkbox_button {
-    background-color: #184f79b0;
-    color: white;
+    background-color: #3E5D93;
+    color: #F4ADBD;
     border-color: #6C0820;
 }
 
+.link {
+    height: 100%;
+}
+
+.link_container {
+    display: flex;
+    height: 25px;
+    font-size: 22px;
+}
+
 .type_item {
+    font-size: 20px;
+    transition: transform 0.3s ease;
+}
 
-    margin: 10px;
-    padding: 15px;
-    font-size: 30px;
+.underbtn {
+    font-size: 15px;
+    color: rgb(104, 103, 106);
+    margin: 5px 0px 0 0;
+    display: flex;
+    justify-content: center;
+    font-family: '';
+}
 
+.bg-blur {
+    position: absolute;
+    inset: -20px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(20px);
+    transform: scale(1.1);
+}
+
+.overlay {
+    background: linear-gradient(to right, #6C0820 0%, #f4adbe00 35%, #f4adbe00 50%, #f4adbe00 65%, #6C0820 100%);
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
 }
 
 .coments_ul {
@@ -240,6 +297,69 @@ p {
     margin-left: 30px;
     width: fit-content;
 
+}
+
+.info_container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    justify-content: center;
+}
+
+.info_ul {
+    list-style-type: none;
+    width: 100%;
+    font-size: 22px;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: space-around;
+    position: absolute;
+    top: -18px;
+
+    div {
+        font-size: 20px;
+    }
+
+    .au_short_info {
+        color: #254C69;
+        z-index: 3;
+
+        margin-top: 10px;
+    }
+
+    .lister {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        height: 50px;
+        align-self: stretch;
+        transition: transform 0.3s ease;
+
+        img {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            z-index: -1;
+        }
+
+        a {
+            div {
+                font-size: 18px;
+            }
+
+        }
+    }
+
+    .lister:hover {
+        transform: translateY(10px);
+    }
+}
+
+li:hover {
+    transform: translateY(3px);
 }
 
 .new_coms {

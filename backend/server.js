@@ -6,6 +6,8 @@ const mysql = require("mysql2");
 const { use } = require("react");
 const bcrypt = require("bcrypt");
 const app = express();
+const fs = require('fs');
+const path = require('path');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -15,6 +17,72 @@ app.use(cors({
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type"]
 }));
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+    tls: {
+        rejectUnauthorized: false,
+    },
+});
+
+const QRCode = require('qrcode');
+const puppeteer = require('puppeteer');
+const { buildTicketHTML } = require('./templates/ticketTemplate');
+
+app.post('/send-email', async (req, res) => {
+    const { user, order } = req.body;
+
+    try {
+        const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+
+        for (const event of order) {
+            for (const ticket of event.tickets) {
+                const qrDataUrl = await QRCode.toDataURL(
+                    `https://yoursite.com/verify/${ticket.date_id}`,
+                    { width: 250, errorCorrectionLevel: 'H' }
+                );
+
+                const ticketHTML = buildTicketHTML(user, event, ticket, qrDataUrl);
+                const page = await browser.newPage();
+                await page.setContent(ticketHTML, { waitUntil: 'networkidle0' });
+                const pdfBuffer = await page.pdf({ format: 'A5', printBackground: true });
+                await page.close();
+
+                await transporter.sendMail({
+                    from: `"EVENT//ERA" <${process.env.EMAIL_USER}>`,
+                    to: user.email,
+                    subject: `Квиток — ${event.ukr.title}`,
+                    html: `<p>Ваш квиток у вкладенні.</p>`,
+                    attachments: [{
+                        filename: `ticket-${ticket.date_id}.pdf`,
+                        content: pdfBuffer,
+                        contentType: 'application/pdf'
+                    }]
+                });
+            }
+        }
+        await browser.close();
+        res.json({ success: true, message: 'Email надіслано!' });
+
+    } catch (error) {
+        console.error('Email error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/webhook/payment-success', async (req, res) => {
+    const order = await Order.findById(req.body.orderId);
+
+    for (const tickets of order.tickets) {
+        await sendTicketEmail(tickets);
+    }
+
+    res.json({ ok: true });
+});
 
 const db = mysql.createPool({
     host: "localhost",
@@ -27,19 +95,45 @@ const db = mysql.createPool({
 });
 
 app.get("/tickets", (req, res) => {
-    const query = "SELECT id, title FROM tickets";
+
+    const query = `
+       SELECT
+    tickets.*,
+    dates.id AS date_id,
+    dates.date,
+    dates.quantity,
+    location.address_ukr,
+    location.address_eng,
+    country.id as country_id,
+    type.type_ukr,
+    type.type_eng,
+    country.name_ukr,
+    country.name_eng,
+    sub_authors.sub_organization as org_id,
+	genres.id as genre_id,
+    genres.genre_ukr,
+    genres.genre_eng
+        FROM dates
+        JOIN tickets ON tickets.id = dates.ticket_id
+        JOIN location ON location.id = dates.location_id
+        JOIN country ON country.id = location.country_id
+        LEFT JOIN tickets_genre ON tickets_genre.ticket_id = tickets.id
+        LEFT JOIN genres ON genres.id = tickets_genre.genre_id
+        LEFT JOIN sub_authors ON tickets.id = sub_authors.ticket_id
+        JOIN type ON type.id = tickets.type_id
+`;
 
     db.query(query, (err, results) => {
         if (err) {
             console.error("SQL error:", err);
-            return res.status(500).json({ error: "Failed to fetch categories" });
+            return res.status(500).json({ error: "Failed to fetch tickets" });
         }
         res.json(results);
     });
 });
 
 app.get("/genres", (req, res) => {
-    const query = "select id, genre from genres";
+    const query = "select * from genres";
 
     db.query(query, (err, results) => {
         if (err) {
@@ -51,7 +145,7 @@ app.get("/genres", (req, res) => {
 });
 
 app.get("/types", (req, res) => {
-    const query = "select id, type from type";
+    const query = "select * from type";
 
     db.query(query, (err, results) => {
         if (err) {
@@ -62,8 +156,12 @@ app.get("/types", (req, res) => {
     });
 });
 
-app.get("/price", (req, res) => {
-    const query = "select max(bt.price) as max, min(bt.price) as min  from book_type bt";
+app.get("/organizations", (req, res) => {
+    const query = `
+    SELECT sa.ticket_id as event_id, o.id as org_id, o.*
+    FROM organization o
+    RIGHT JOIN sub_authors sa ON sa.sub_organization = o.id
+`;
 
     db.query(query, (err, results) => {
         if (err) {
@@ -74,8 +172,8 @@ app.get("/price", (req, res) => {
     });
 });
 
-app.get("/langs", (req, res) => {
-    const query = "select id, name from langs";
+app.get("/country", (req, res) => {
+    const query = "select * from country";
 
     db.query(query, (err, results) => {
         if (err) {
@@ -86,35 +184,35 @@ app.get("/langs", (req, res) => {
     });
 });
 
-app.get("/books", (req, res) => {
+/*app.get("/books", (req, res) => {
     const categoryIdentifier = req.query.category;
     const limit = parseInt(req.query.limit) || 7;
     const offset = parseInt(req.query.offset) || 0;
-
+ 
     if (!categoryIdentifier) {
         return res.status(400).json({ error: "Category is required" });
     }
-
+ 
     const getCategoryQuery = `
         SELECT view_name, name 
         FROM categories 
         WHERE id = ? OR name = ? OR view_name = ?
     `;
-
+ 
     db.query(getCategoryQuery, [categoryIdentifier, categoryIdentifier, categoryIdentifier], (err, categoryResults) => {
         if (err) {
             console.error("SQL error:", err);
             return res.status(500).json({ error: "Database error" });
         }
-
+ 
         if (categoryResults.length === 0) {
             return res.status(404).json({ error: "Category not found" });
         }
-
+ 
         const viewName = categoryResults[0].view_name;
-
+ 
         const query = `SELECT * FROM ${mysql.escapeId(viewName)} ORDER BY price DESC LIMIT ? OFFSET ?`;
-
+ 
         db.query(query, [limit, offset], (err, results) => {
             if (err) {
                 console.error("SQL error:", err);
@@ -123,136 +221,29 @@ app.get("/books", (req, res) => {
             res.json(results);
         });
     });
-});
-
-app.get("/authors", (req, res) => {
-    const id = req.query.id;
-    let query = "SELECT id, first_name, last_name, biography, photo FROM authors";
-    const params = [];
-
-    if (id) {
-        query += " WHERE id = ?";
-        params.push(id);
-    }
-
-    db.query(query, params, (err, results) => {
-        if (err) {
-            console.error("SQL error:", err);
-            return res.status(500).json({ error: "Failed to fetch authors" });
-        }
-        res.json(results);
-    });
-});
-
-app.get("/publishers", (req, res) => {
-
-    const id = req.query.id;
-
-    let query = "SELECT ID, name, photo FROM publishers";
-    let params = [];
-
-    if (id) {
-        query += " WHERE ID = ?";
-        params.push(id);
-    }
-
-    db.query(query, params, (err, results) => {
-        if (err) {
-            console.error("SQL error:", err);
-            return res.status(500).json({ error: "Failed to fetch publishers" });
-        }
-        res.json(results);
-    });
-
-});
-
-app.get("/authors_books", (req, res) => {
-    const { book_id, authorId, PublisherId, limit = 20, offset = 0 } = req.query;
-
-    let query = `
-        SELECT DISTINCT
-            bt.id AS book_type_id,
-            b.id AS book_id,
-            b.title,
-            p.name AS publisher,
-            p.id as publisher_id,
-            p.photo as logo,
-            bt.type_id,
-            t.type,
-            bt.price,
-            b.annotation,
-            bt.availability,
-            b.cover,
-            b.year,
-            a.id AS author_id,
-            a.first_name,
-            a.last_name,
-            a.biography,
-            a.photo,
-            a.links,            
-            l.name as lang
-        FROM book_type bt
-        JOIN books b ON b.id = bt.book_id
-        JOIN authors a ON a.id = b.author
-        JOIN publishers p ON p.id = b.publisher_id
-        JOIN type t ON t.id = bt.type_id
-        JOIN langs l ON l.id = b.lang_id
-    `;
-
-    const conditions = [];
-    const params = [];
-
-    if (book_id) {
-        conditions.push("bt.book_id = (SELECT book_id FROM book_type WHERE id = ?)");
-        params.push(book_id);
-    }
-
-    if (authorId) {
-        conditions.push("a.id = ?");
-        params.push(authorId);
-    }
-    if (PublisherId) {
-        conditions.push("p.id = ?");
-        params.push(PublisherId);
-    }
-
-    if (conditions.length > 0) {
-        query += " WHERE " + conditions.join(" AND ");
-    }
-    query += " ORDER BY bt.id LIMIT ? OFFSET ?";
-    params.push(Number(limit), Number(offset));
-
-    db.query(query, params, (err, results) => {
-        if (err) {
-            console.error("SQL error:", err);
-            return res.status(500).json({ error: "Failed to fetch books" });
-        }
-        res.json(results);
-    });
-});
+});*/
 
 app.post("/log_in", (req, res) => {
-    const { login, password } = req.body;
+    const { email, password } = req.body;
     db.query(
-        `SELECT id, login, first_name, last_name, phone_number, password, role, email, city
+        `SELECT id, first_name, last_name, password, phone_number, role, email, city
          FROM users
-         WHERE login = ? AND isActive = "T"
+         WHERE email = ?
          LIMIT 1`,
-        [login],
+        [email],
         async (err, results) => {
             if (err) return res.status(500).send("Server error");
             if (!results || results.length === 0) {
-                return res.status(401).json({ error: "Невірний логін або пароль" });
+                return res.status(401).json({ error: "Невірна пошта або пароль" });
             }
             const user = results[0];
             const isValid = await bcrypt.compare(password, user.password);
             if (!isValid) {
-                return res.status(401).json({ error: "Невірний логін або пароль" });
+                return res.status(401).json({ error: "Невірна пошта або пароль" });
             }
 
             res.json({
                 id: user.id,
-                login: user.login,
                 first_name: user.first_name,
                 last_name: user.last_name,
                 phone_number: user.phone_number,
@@ -265,23 +256,23 @@ app.post("/log_in", (req, res) => {
 });
 
 app.post("/sign_up", async (req, res) => {
-    const { login, password, first_name, last_name, phone_number, role } = req.body || {};
+    const { email, password, first_name, last_name, phone_number, role } = req.body || {};
 
-    if (!login || !password) {
-        return res.status(400).json({ error: "Login or password missing" });
+    if (!email || !password) {
+        return res.status(400).json({ error: "Email or password missing" });
     }
 
     try {
         const passwordHash = await bcrypt.hash(password, 12);
 
         const query = `
-            INSERT INTO users(first_name, last_name, login, password, phone_number, role)
+            INSERT INTO users(first_name, last_name, email, password, phone_number, role)
             VALUES(?, ?, ?, ?, ?, ?)
         `;
 
         db.query(
             query,
-            [first_name, last_name, login, passwordHash, phone_number, role],
+            [first_name, last_name, email, passwordHash, phone_number, role],
             (err, results) => {
                 if (err) {
                     return res.status(500).json({ error: "Server error", details: err.message });
@@ -289,7 +280,7 @@ app.post("/sign_up", async (req, res) => {
 
                 res.json({
                     id: results.insertId,
-                    login,
+                    email,
                     first_name,
                     last_name,
                     phone_number,
@@ -415,35 +406,6 @@ app.get("/comments/:bookType", (req, res) => {
     });
 });
 
-app.post("/new_comm", (req, res) => {
-
-    const { user_id, book_id, caption, sub_rate, date_post } = req.body || {};
-
-    if (!user_id || !book_id || !caption || !sub_rate) {
-        return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    let mysqlDate;
-    if (date_post) {
-        mysqlDate = new Date(date_post).toISOString().slice(0, 19).replace('T', ' ');
-    } else {
-        mysqlDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    }
-
-    const query = `
-        INSERT INTO comments(user_id, book_id, caption, sub_rate, date_post)
-        VALUES (?, ?, ?, ?, ?)
-    `;
-
-    db.query(query, [user_id, book_id, caption, sub_rate, mysqlDate], (err, results) => {
-        if (err) {
-            console.error("SQL error:", err);
-            return res.status(500).json({ error: "Database error", details: err.message });
-        }
-        res.json({ message: "Comment added!", comment: { caption, sub_rate } });
-    });
-});
-
 app.get("/cart", (req, res) => {
     const user_id = req.query.user_id;
 
@@ -452,23 +414,7 @@ app.get("/cart", (req, res) => {
     }
 
     const query = `
-              SELECT
-        c.id,
-        bt.id AS id,
-        b.title,
-        b.cover,
-        bt.price,
-        a.first_name,
-        a.last_name,
-        c.quantity,
-        t.type
-        FROM cart c
-        JOIN book_type bt ON bt.id = c.book_id
-        JOIN books b ON b.id = bt.book_id
-        JOIN authors a ON a.id = b.author
-        JOIN type t ON t.id = bt.type_id
-        WHERE c.in_order IS NULL and c.user_id = ?
-        ORDER BY c.id DESC;
+             SELECT cart.* FROM cart WHERE in_order is null;
     `;
 
     db.query(query, [user_id], (err, results) => {
@@ -476,27 +422,39 @@ app.get("/cart", (req, res) => {
             console.error(err);
             return res.status(500).json({ error: "DB error" });
         }
-        res.json(results);
+        const mapped = results.map(item => ({
+            ...item,
+            seconds_left: item.reserved_until
+                ? Math.max(
+                    0,
+                    Math.floor(
+                        (new Date(item.reserved_until + 'Z') - Date.now()) / 1000
+                    )
+                )
+                : null
+        }));
+        res.json(mapped);
     });
 });
 
 app.post("/add_cart", (req, res) => {
 
-    const { user_id, book_id, quantity } = req.body;
+    const { user_id, ticket_date_id, quantity } = req.body;
 
-    if (!user_id || !book_id) {
+    if (!user_id || !ticket_date_id) {
         return res.status(400).json({
             error: "Missing required fields",
-            received: { user_id, book_id }
+            received: { user_id, ticket_date_id },
+            reserved_until: new Date(Date.now() + 15 * 60 * 1000)
         });
     }
 
     const checkQuery = `
         SELECT * FROM cart 
-        WHERE user_id = ? AND book_id = ? AND in_order IS NULL;
+        WHERE user_id = ? AND ticket_date_id = ? AND in_order IS NULL;
     `;
 
-    db.query(checkQuery, [user_id, book_id], (err, results) => {
+    db.query(checkQuery, [user_id, ticket_date_id], (err, results) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ error: "Server error" });
@@ -518,9 +476,9 @@ app.post("/add_cart", (req, res) => {
             );
         } else {
             db.query(
-                `INSERT INTO cart (user_id, book_id, quantity)
-                 VALUES (?, ?, ?)`,
-                [user_id, book_id, quantity || 1],
+                `INSERT INTO cart (user_id, ticket_date_id, quantity, reserved_until)
+                 VALUES (?, ?, ?, UTC_TIMESTAMP() + INTERVAL 15 MINUTE)`,
+                [user_id, ticket_date_id, quantity || 1],
                 (err) => {
                     if (err) {
                         console.error(err);
@@ -540,7 +498,7 @@ app.put("/cart/:id", (req, res) => {
     const query = `
         UPDATE cart 
         SET quantity = ? 
-        WHERE book_id = ? AND user_id = ?
+        WHERE ticket_date_id = ? AND user_id = ?
     `;
 
     db.query(query, [quantity, id, user_id], (err, results) => {
@@ -551,6 +509,10 @@ app.put("/cart/:id", (req, res) => {
         res.json({ message: "Quantity updated" });
     });
 });
+
+setInterval(() => {
+    db.query('DELETE FROM cart WHERE reserved_until < UTC_TIMESTAMP() AND in_order IS NULL');
+}, 60 * 1000);
 
 app.delete("/cart/:id", (req, res) => {
     const { id } = req.params;
@@ -632,7 +594,7 @@ app.get("/history", (req, res) => {
 });
 
 app.post("/edit_info", (req, res) => {
-    const { id, first_name, last_name, login, phone_number, email, city } = req.body;
+    const { id, first_name, last_name, phone_number, email, city } = req.body;
 
     if (!id) {
         return res.status(400).json({ error: "User id is required" });
@@ -640,9 +602,9 @@ app.post("/edit_info", (req, res) => {
 
     db.query(
         `UPDATE users
-         SET first_name = ?, last_name = ?, login = ?, phone_number = ?, email = ?, city = ?
+         SET first_name = ?, last_name = ?, phone_number = ?, email = ?, city = ?
          WHERE id = ?`,
-        [first_name, last_name, login, phone_number, email, city, id],
+        [first_name, last_name, phone_number, email, city, id],
         (err, result) => {
             if (err) {
                 console.error(err);
@@ -657,10 +619,10 @@ app.post("/edit_info", (req, res) => {
         }
     );
 });
-
+/*
 app.get("/posta", (req, res) => {
     const query = `select id, posta from posta`;
-
+ 
     db.query(query, (err, results) => {
         if (err) {
             console.error(err);
@@ -669,10 +631,10 @@ app.get("/posta", (req, res) => {
         res.json(results);
     });
 })
-
+ 
 app.post("/departments", async (req, res) => {
     const { ref } = req.body;
-
+ 
     try {
         const response = await fetch("https://api.novaposhta.ua/v2.0/json/", {
             method: "POST",
@@ -686,22 +648,22 @@ app.post("/departments", async (req, res) => {
                 }
             })
         });
-
+ 
         const data = await response.json();
-
+ 
         if (!data.success) {
             return res.status(400).json({ error: data.errors });
         }
-
+ 
         res.json(data.data);
     } catch (err) {
         res.status(500).json({ error: "Nova Poshta API error" });
     }
 });
-
+ 
 app.post("/city", async (req, res) => {
     const { city } = req.body;
-
+ 
     try {
         const response = await fetch("https://api.novaposhta.ua/v2.0/json/", {
             method: "POST",
@@ -716,31 +678,29 @@ app.post("/city", async (req, res) => {
             })
         });
         const data = await response.json();
-
+ 
         if (!data.success) {
             return res.status(400).json({ error: data.errors });
         }
-
+ 
         res.json(data.data);
     } catch (err) {
         res.status(500).json({ error: "Nova Poshta API error" });
     }
 });
-
+*/
 app.post("/make_order", (req, res) => {
-    const { date_and_time, posta_id, post_address, cart_ids, user_id } = req.body;
+    const { cart_ids, user_id } = req.body;
 
-    if (!posta_id || !post_address || !date_and_time || !user_id || !cart_ids?.length) {
+    if (!user_id || !cart_ids?.length) {
         return res.status(400).json({
             error: "Missing required fields"
         });
     }
-
-    const mysqlDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
     db.query(
-        `INSERT INTO orders (date_and_time, posta_id, post_address, status_id)
-         VALUES (?, ?, ?, 1)`,
-        [mysqlDate, posta_id, post_address],
+        `INSERT INTO orders (date_and_time)
+         VALUES (UTC_TIMESTAMP())`,
+        [],
         (err, result) => {
             if (err) {
                 console.error(err);
@@ -749,7 +709,7 @@ app.post("/make_order", (req, res) => {
 
             const orderId = result.insertId;
             db.query(
-                `UPDATE cart SET in_order = ? WHERE book_id IN (?) and user_id = ?`,
+                `UPDATE cart SET in_order = ? WHERE id IN (?)`,
                 [orderId, cart_ids, user_id],
                 (err2) => {
                     if (err2) {
@@ -757,8 +717,7 @@ app.post("/make_order", (req, res) => {
                         return res.status(500).json({ error: "Update cart failed" });
                     }
                     res.json({
-                        success: true,
-                        order_id: orderId
+                        success: true
                     });
                 }
             );

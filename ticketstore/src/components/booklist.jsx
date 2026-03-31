@@ -17,7 +17,6 @@ export default function BooksList({ category, categoryName }) {
         if (width < 940) p = 4;
         if (width < 570) p = 2;
         if (page === 2) p--;
-        console.log(p, page);
         return p;
     }
 

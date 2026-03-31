@@ -1,8 +1,8 @@
 .filter-popup,
 .matrix {
     position: absolute;
-    top: 70px;
-    right: 5%;
+    top: 180px;
+    right: 10%;
     background: #3E5D93;
     border-radius: 12px;
     padding: 20px 18px;
@@ -76,7 +76,7 @@
     align-items: center;
     height: 32px;
     cursor: pointer;
-    font-family: 'Lucida Sans',
+    font-family: ' ',
         'Franklin Gothic Medium';
 }
 
@@ -90,7 +90,8 @@
 
 .filter_item:hover,
 .genres_item:hover {
-    background: rgb(117, 169, 191);
+    background: #F4ADBD;
+    color: #6C0820;
 }
 
 .button_item {
@@ -99,7 +100,7 @@
 }
 
 .button_item:hover {
-    background: rgb(122, 153, 128);
+    background: #F4DCDC;
 }
 
 .hidden_checkbox:checked+.genres_item {

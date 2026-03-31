@@ -2,86 +2,61 @@ import { useState, useContext, useEffect } from "react";
 import { useLocation, useNavigate, NavLink } from "react-router-dom";
 import { UserContext } from "../context/UserContext";
 import Loading from "../pages/Loading"
-import CitySelector from "../components/city_selector";
+import { CartContext } from "../context/CartContext";
+//import CitySelector from "../components/city_selector";
+import { MoreContext } from "../context/MoreContext";
 import Alert from "../components/alert";
+import { useEmail } from "../utils/SendMail"
 
 export default function Order() {
     const navigate = useNavigate();
+    const { fetchCart } = useContext(CartContext);
+    const { lang } = useContext(MoreContext);
     const { user, setUser } = useContext(UserContext);
     const [first_name, setFirstName] = useState(user?.first_name || "");
     const [last_name, setLastName] = useState(user?.last_name || "");
     const [phone_number, setPhone] = useState(user?.phone_number || "");
-    const [city, setCity] = useState(user?.city || "");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(null);
     const [postomats, getPostomat] = useState([]);
     const [warehouses, getWarehouses] = useState([]);
-    const [posta, setPosta] = useState([]);
+    const [email, setEmail] = useState(user?.email || "");
     const [deliveryType, setDeliveryType] = useState(1);
-    const [cityRef, setCityRef] = useState(null);
     const { state } = useLocation();
     const [chosen, setChosen] = useState(state?.items || [])
-    const [deps, setDep] = useState(null)
     const [theText, setText] = useState("");
     const [showAlert, setShowAlert] = useState(false);
     const user_id = user?.id;
+
+    const translator = {
+        ukr: {
+            currency: "грн",
+            due: "До сплати",
+            cancel: "Скасувати"
+        },
+        eng: {
+            currency: "uah",
+            due: "Total to pay",
+            cancel: "Cancel"
+        }
+    }
 
     const cancel = () => {
         setShowAlert(false);
     };
 
-
-    const handleSelectCity = (option) => {
-        setCity(option.Description);
-        setCityRef(option.Ref);
-    };
     if (loading) return <Loading />;
-    console.log(chosen)
-    const postDepartment = async (cityRef) => {
-        try {
-            const res = await fetch("http://localhost:5000/departments", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ref: cityRef })
-            });
-
-            if (!res.ok) throw new Error("Помилка завантаження");
-
-            const data = await res.json();
-
-            const warehouses = data.filter(wh =>
-                wh.Description.startsWith("Відділення")
-            );
-            const postomat = data.filter(wh =>
-                wh.Description.startsWith("Поштомат")
-            );
-
-            getWarehouses(warehouses);
-            getPostomat(postomat);
-        } catch (err) {
-            setError(err.message);
-        }
-    };
 
     function removeItem(id) {
         setChosen(chosen.filter(item => item.id !== id))
     }
 
     const order = async () => {
-        let date_and_time = new Date().toISOString()
-        const cart_ids = chosen.map(item => item.id);
-
-        if (!date_and_time || !deliveryType || !deps || !cart_ids || !user_id) {
-            console.log("deps: " + deps)
-        }
+        const cart_ids = chosen.map(item => item.tickets.map(t => t.cart_id));
         try {
             const res = await fetch("http://localhost:5000/make_order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    date_and_time,
-                    posta_id: deliveryType,
-                    post_address: deps,
                     cart_ids,
                     user_id
                 })
@@ -90,67 +65,36 @@ export default function Order() {
             if (!res.ok) throw new Error("Помилка завантаження");
 
             const data = await res.json();
-
             if (data.success) {
+                sendEmail({ user, order: chosen })
                 navigate("/returner");
+                await fetchCart();
             }
         } catch (err) {
             console.error(err);
         }
     };
 
-
-    useEffect(() => {
-        fetch('http://localhost:5000/posta')
-            .then(res => {
-                if (!res.ok) throw new Error('Failed to fetch posta');
-                return res.json();
-            })
-            .then(data => {
-                setPosta(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error("Error loading categories:", err);
-                setError(err.message);
-                setLoading(false);
-            });
-    }, []);
-
-
-
+    const { sendEmail } = useEmail();
     useEffect(() => {
         if (user) {
             setFirstName(user.first_name);
             setLastName(user.last_name);
             setPhone(user.phone_number);
-            setCity(user.city);
+            setEmail(user.email);
         }
         setLoading(false);
     }, [user]);
 
-
-    useEffect(() => {
-        if (!cityRef) return;
-        postDepartment(cityRef);
-    }, [cityRef]);
-
-    useEffect(() => {
-        if (deliveryType === 1 && warehouses.length > 0) {
-            setDep(warehouses[0].Description);
-        }
-
-        if (deliveryType !== 1 && postomats.length > 0) {
-            setDep(postomats[0].Description);
-        }
-    }, [deliveryType, warehouses, postomats]);
-
+    console.log("chosen", chosen);
     const total = chosen.reduce((acc, item) => {
-        acc.totalSum += Number(item.price) * item.quantity;
-        acc.totalCount += Number(item.quantity);
+        const itemCount = item.tickets.reduce((sum, t) => sum + t.quantity, 0);
+
+        acc.totalSum += Number(item.price) * itemCount;
+        acc.totalCount += itemCount;
+
         return acc;
     }, { totalSum: 0, totalCount: 0 });
-
     if (chosen.length === 0) {
         return <h2>Немає товарів для оформлення</h2>;
     }
@@ -168,44 +112,12 @@ export default function Order() {
                     <div className="prof">Ім'я<input key="info_name" value={first_name} onChange={e => setFirstName(e.target.value)} /></div>
                     <div className="prof">Прізвище<input key="info_last_name" value={last_name} onChange={e => setLastName(e.target.value)} /></div>
                     <div className="prof">Телефон<input key="info_phone" value={phone_number} onChange={e => setPhone(e.target.value)} /></div>
-                    <CitySelector
-                        city={city}
-                        setCity={setCity}
-                        onSelect={handleSelectCity}
-                    />
-                    <div className="prof">
-                        Тип доставки
-                        <select id="type" name="type" onChange={e => setDeliveryType(e.target.value === "Нова пошта відділення" ? 1 : 2)}>
-                            {posta.map(item => {
-                                return (
-                                    <option key={`posta_${item.id}`}>{item.posta}</option>
-                                )
-                            })}
-                        </select>
-                    </div>
-                    <div className="prof">
-                        Відділення
-                        <select onChange={e => setDep(e.target.value)}>
-                            {deliveryType === 1 ?
-                                warehouses.map(dep => (
-                                    <option key={dep.Ref} value={dep.Description}>
-                                        {dep.Description}
-                                    </option>
-                                ))
-                                :
-                                postomats.map(dep => (
-                                    <option key={dep.Ref} value={dep.Description}>
-                                        {dep.Description}
-                                    </option>
-                                ))
-                            }
-                        </select>
-                    </div>
+                    <div className="prof">Ел.Пошта<input key="info_phone" value={email} onChange={e => setEmail(e.target.value)} /></div>
                 </div>
                 <div className="profile_info checkout">
                     <div className="total-price">
-                        <h2>До сплати</h2>
-                        <h2>{total.totalSum}</h2>
+                        <h2>{translator?.[lang].due}</h2>
+                        <h2>{total.totalSum} {translator?.[lang].currency}</h2>
                     </div>
                     <div className="total-price">
                         <NavLink to="/cart">Скасувати</NavLink>

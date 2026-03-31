@@ -22,7 +22,6 @@ async function editInfo(user) {
 
 export default function MyProfile() {
     const { user, setUser, handleLogout } = useContext(UserContext);
-    const [login, setLogin] = useState(user?.login || "");
     const [first_name, setFirstName] = useState(user?.first_name || "");
     const [last_name, setLastName] = useState(user?.last_name || "");
     const [phone_number, setPhone] = useState(user?.phone_number || "");
@@ -48,7 +47,6 @@ export default function MyProfile() {
 
     useEffect(() => {
         if (user) {
-            setLogin(user.login);
             setFirstName(user.first_name);
             setLastName(user.last_name);
             setPhone(user.phone_number);
@@ -115,7 +113,7 @@ export default function MyProfile() {
             <div className="profile_info_section">
                 <h1>Особиста інформація</h1>
                 <div className="profile_info">
-                    <div className="prof">Логін<input value={login} onChange={e => setLogin(e.target.value)} /></div>
+                    <div className="prof">Пошта<input value={email} onChange={e => setEmail(e.target.value)} /></div>
                     <div className="prof">Ім'я<input value={first_name} onChange={e => setFirstName(e.target.value)} /></div>
                     <div className="prof">Прізвище<input value={last_name} onChange={e => setLastName(e.target.value)} /></div>
                     <div className="prof">Телефон<input value={phone_number} onChange={e => setPhone(e.target.value)} /></div>
@@ -130,7 +128,6 @@ export default function MyProfile() {
                             <div className="prof"><button className="edit" onClick={async () => {
                                 const updatedUser = {
                                     id: user.id,
-                                    login,
                                     first_name,
                                     last_name,
                                     phone_number,

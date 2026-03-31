@@ -1,11 +1,12 @@
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { MoreProvider } from "./context/MoreContext";
 import App from "./App";
 import Catalog from "./pages/Catalog";
-import Authors from "./pages/Authors";
+import Performers from "./pages/Performers";
 import Publishers from "./pages/Publishers";
-import AuthorDetails from "./pages/Author_Details";
-import BookDetails from "./pages/Book_Details.jsx";
+import PerformerDetails from "./pages/Performer_Details";
+import EventDetails from "./pages/Event_Details.jsx";
 import NotFound from "./pages/notfound.jsx";
 import SetBooks from "./pages/Set_of_books.jsx";
 import MyProfile from "./pages/My_Profile.jsx";
@@ -22,24 +23,25 @@ const router = createBrowserRouter([
     errorElement: <NotFound />,
     children: [
       { index: true, element: <Catalog /> },
-      { path: "authors", element: <Authors /> },
+      { path: "performers", element: <Performers /> },
       { path: "publishers", element: <Publishers /> },
-      { path: "author/details/:id", element: <AuthorDetails /> },
-      { path: "book/details/:id", element: <BookDetails /> },
-      { path: "/books/filteredbooks/:category?", element: <SetBooks /> },
+      { path: "performers/details/:id", element: <PerformerDetails /> },
+      { path: "event/details/:id", element: <EventDetails /> },
+      { path: "/event/filteredbooks/:category?", element: <SetBooks /> },
       { path: "/profile", element: <MyProfile /> },
       { path: "/publisher/details/:id", element: <Publisher_Details /> },
       { path: "/cart", element: <Cart /> },
       { path: "/order", element: <Order /> },
       { path: "/admin/cart", element: <Cart_for_admins /> },
       { path: "/returner", element: <Returner /> },
+      { path: "/verify/:id", element: <Verify /> },
       { path: "*", element: <NotFound /> },
     ],
   },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <RouterProvider router={router} />
+  <MoreProvider>
+    <RouterProvider router={router} />
+  </MoreProvider>
 );
-
-

@@ -8,6 +8,7 @@
     font-size: 22px;
     border-radius: 30px;
     padding: 10px;
+    transition: 0.5s;
 }
 
 h2 {
@@ -31,8 +32,10 @@ h2 {
 .photo .overlay {
     position: absolute;
     inset: 0;
-    background-color: #1a3b559c;
+    background-color: #6c081fb9;
     border-radius: 100%;
+    text-align: center;
+    transition: 0.5s;
 
     display: flex;
     align-items: center;
@@ -51,7 +54,6 @@ h2 {
 
     .photo .overlay {
         opacity: 1;
-        text-align: center;
     }
 }
 

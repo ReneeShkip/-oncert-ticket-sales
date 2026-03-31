@@ -4,7 +4,6 @@ export default function Loger({ onLogin, authError, onClose, mode, onRegister })
 
     const ToggleRef = useRef(null);
     const [isClosed, setClose] = useState(false);
-    const [login, setLogin] = useState("");
     const [password, setPassword] = useState("");
     const [first_name, setfName] = useState("");
     const [last_name, setlName] = useState("");
@@ -13,9 +12,10 @@ export default function Loger({ onLogin, authError, onClose, mode, onRegister })
     const [city, setCity] = useState("");
     const [email, setEmail] = useState("");
     const [errors, setErrors] = useState({});
+    const [whatStyle, setWhatStyle] = useState("password");
 
     const [form, setForm] = useState({
-        login: "",
+        email: "",
         password: ""
     });
     const handleChange = (e) => {
@@ -35,8 +35,8 @@ export default function Loger({ onLogin, authError, onClose, mode, onRegister })
     const validate = () => {
         const newErrors = {};
 
-        if (!form.login.trim()) {
-            newErrors.login = "Логін обовʼязковий";
+        if (!form.email.trim()) {
+            newErrors.email = "Пошта обовʼязкова";
         }
 
         if (!form.password.trim()) {
@@ -50,16 +50,20 @@ export default function Loger({ onLogin, authError, onClose, mode, onRegister })
 
     const handleRegist = (e) => {
         e.preventDefault();
-        onRegister({ login, first_name, last_name, password, phone_number, role, email, city });
+        onRegister({ email, first_name, last_name, password, phone_number, role, city });
         setClose(true);
     };
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await onLogin(form);
+
         if (!validate()) return;
 
-        onLogin(form);
-        setClose(true);
+        try {
+            await onLogin(form);
+            setClose(true);
+        } catch (err) {
+            console.error("Login failed:", err);
+        }
     };
 
     useEffect(() => {
@@ -97,24 +101,31 @@ export default function Loger({ onLogin, authError, onClose, mode, onRegister })
 
                             <div className="input_section">
                                 <input
-                                    name="login"
+                                    name="email"
                                     type="text"
-                                    placeholder="Логін"
-                                    value={form.login}
+                                    placeholder="Пошта"
+                                    value={form.email}
                                     onChange={handleChange}
-                                    className={`inputs ${errors.login ? "error" : ""}`}
+                                    className={`inputs ${errors.email ? "error" : ""}`}
                                     autoComplete="username"
                                 />
-                                {errors.login && <span className="error-text">{errors.login}</span>}
-                                <input
-                                    name="password"
-                                    type="password"
-                                    placeholder="Пароль"
-                                    value={form.password}
-                                    onChange={handleChange}
-                                    className={`inputs ${errors.password ? "error" : ""}`}
-                                    autoComplete="current-password"
-                                />
+                                {errors.email && <span className="error-text">{errors.email}</span>}
+                                <div className="password_coltainer">
+                                    <input
+                                        name="password"
+                                        type={whatStyle}
+                                        placeholder="Пароль"
+                                        value={form.password}
+                                        onChange={handleChange}
+                                        className={`inputs ${errors.password ? "error" : ""}`}
+                                        autoComplete="current-password"
+                                    />
+                                    <label>
+                                        <input name="type" type="checkbox" className="hidden_checkbox" onChange={() => setWhatStyle(whatStyle === "text" ? "password" : "text")} />
+                                        <img src={`svg/${whatStyle}_eye.svg`} alt="closed" />
+                                    </label>
+
+                                </div>
                                 {errors.password && <span className="error-text">{errors.password}</span>}
                                 <button className="button_enter" type="submit">
                                     Увійти
@@ -127,12 +138,12 @@ export default function Loger({ onLogin, authError, onClose, mode, onRegister })
                             <h2>Реєстрація</h2>
                             <div className="input_section">
                                 <input
-                                    name="login"
+                                    name="email"
                                     className="inputs"
                                     type="text"
-                                    placeholder="Логін"
-                                    value={login}
-                                    onChange={(e) => setLogin(e.target.value)}
+                                    placeholder="Ел. пошта"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
                                 />
 
                                 <input

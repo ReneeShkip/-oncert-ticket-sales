@@ -1,44 +1,45 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import Header from "./components/header";
 import Chat from "./components/chat";
 import Footer from "./components/Footer";
 import { Outlet } from "react-router-dom";
-import { CartProvider } from "./context/CartContext";
+import { CartProvider, CartContext } from "./context/CartContext";
 import { UserProvider } from "./context/UserContext.jsx";
-import "../src/pages/Book_Details.jsx"
+import { MoreContext } from "./context/MoreContext";
+import "./pages/Event_Details.jsx"
+import { EventProvider } from "./context/EventContext.jsx";
+import { PerformerProvider } from "./context/AuthorContext.jsx";
+import Timer from "./utils/Timer.jsx";
+
+function AppContent() {
+  const { theme } = useContext(MoreContext);
+  const { cart } = useContext(CartContext);
+
+  return (
+    <div className={`page ${theme}`} key="main">
+      <Header />
+      <Chat />
+      <main><Outlet /></main>
+      {cart.map(item => (
+        <Timer key={`timer_${item.id}`} secondsLeft={item.seconds_left} />
+      ))}
+      <a href="#top" className="top" key="top">
+        <img
+          src={`/svg/to_top_${theme}.svg`} alt="Вгору" /></a>
+      <Footer />
+    </div>
+  );
+}
 
 function App() {
-
-  const [isAuth, setIsAuth] = useState(false);
-  const [user, setUser] = useState(null);
-  const [hover, setHover] = useState("/svg/to_top.svg")
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      setIsAuth(true);
-    }
-  }, []);
-
   return (
     <UserProvider>
       <CartProvider>
-        <div className="page">
-          <div id="top"></div>
-          <Header />
-          <Chat />
-          <main>
-            <Outlet />
-          </main>
-          <a href="#top" className="top">
-            <img
-              onMouseEnter={() => setHover("/svg/top_hover.svg")}
-              onMouseLeave={() => setHover("/svg/to_top.svg")}
-              src={hover} alt="Вгору" /></a>
-          <Footer />
-        </div>
+        <EventProvider>
+          <PerformerProvider>
+            <AppContent />
+          </PerformerProvider>
+        </EventProvider>
       </CartProvider>
     </UserProvider>
   );

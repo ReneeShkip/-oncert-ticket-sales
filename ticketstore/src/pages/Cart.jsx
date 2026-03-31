@@ -2,13 +2,17 @@ import { useContext, useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { UserContext } from "../context/UserContext";
 import { CartContext } from "../context/CartContext";
+import { useEvents } from "../context/EventContext";
+import { usePerformers } from "../context/AuthorContext";
 import Alert from "../components/alert";
+import { MoreContext } from "../context/MoreContext";
 import Loading from "./Loading.jsx";
 import './css/cart.css';
 
 function Cart() {
     const [showAlert, setShowAlert] = useState(false);
     const { isAuth } = useContext(UserContext);
+    const { authors } = usePerformers();
     const {
         cart,
         setCart,
@@ -17,12 +21,34 @@ function Cart() {
         removeItem,
         removeAll
     } = useContext(CartContext);
+    const { events } = useEvents();
+    const cartMap = new Map(
+        cart.map(c => [String(c.ticket_date_id), c])
+    );
+
+    const yourEvents = events
+        .map(event => {
+            const tickets = event.tickets
+                .filter(t => cartMap.has(String(t.date_id)))
+                .map(t => {
+                    const cartItem = cartMap.get(String(t.date_id));
+
+                    return {
+                        ...t,
+                        quantity: cartItem.quantity,
+                        cart_id: cartItem.id
+                    };
+                });
+
+            return { ...event, tickets };
+        })
+        .filter(e => e.tickets.length);
 
     const [chosen, setChosen] = useState([]);
     const [itemToDelete, setItemToDelete] = useState(null);
     const [theText, setText] = useState("");
     const [justOne, setOne] = useState(false);
-
+    const { lang, theme } = useContext(MoreContext);
     const confirmDeleteOne = () => {
         removeItem(itemToDelete);
         setShowAlert(false);
@@ -44,6 +70,16 @@ function Cart() {
             )
         );
     }, [cart]);
+
+    useEffect(() => {
+        if (!authors || !chosen.length) return;
+        setChosen(prev => prev.map(event => ({
+            ...event,
+            eventAuthors: authors.filter(a =>
+                a.events.some(e => String(e.id) === String(event.id))
+            )
+        })));
+    }, [authors]);
 
     if (loading) return (<Loading />);
 
@@ -68,7 +104,6 @@ function Cart() {
         acc.totalCount += Number(item.quantity);
         return acc;
     }, { totalSum: 0, totalCount: 0 });
-
     return (
 
         <div className="cart_page">
@@ -110,7 +145,7 @@ function Cart() {
                     </div>
 
                     <ul name="cart_books" className="cart-ul">
-                        {cart.map(item => (
+                        {yourEvents.map(item => (
                             <li key={item.id}>
                                 <label key={`label_${item.id}`}>
                                     <input
@@ -130,12 +165,12 @@ function Cart() {
                                         <div className="main-info">
                                             <img
                                                 src={`/img/covers/${item.cover}`}
-                                                alt={item.title}
+                                                alt={item?.[lang].title}
                                                 className={`book-cover ${item.type}`}
                                             />
                                             <div className="info-cart">
                                                 <NavLink to={`/book/details/${item.id}`} className="navlink">
-                                                    <div>{item.title}</div>
+                                                    <div>{item?.[lang].title}</div>
                                                 </NavLink>
                                                 <div className="sub_info">
                                                     {item.first_name} {item.last_name}
@@ -143,27 +178,36 @@ function Cart() {
                                             </div>
                                             <div className="quantity-wrapper">{item.type}</div>
                                         </div>
-                                        <div className="quantity-wrapper">
-                                            <input
-                                                type="number"
-                                                className="quant"
-                                                min={1}
-                                                value={item.quantity}
-                                                onChange={e => {
-                                                    const value = Math.max(1, Number(e.target.value));
+                                        {item.tickets.map(t =>
+                                            <div>
+                                                <div className="quantity-wrapper">
+                                                    <input
+                                                        type="number"
+                                                        className="quant"
+                                                        min={1}
+                                                        value={t.quantity}
+                                                        onChange={e => {
+                                                            const value = Math.max(1, Number(e.target.value));
 
-                                                    setCart(prev =>
-                                                        prev.map(i => i.id === item.id ? { ...i, quantity: value } : i)
-                                                    );
-                                                }}
-                                                onBlur={() => {
-                                                    updateQuantity(item.id, item.quantity);
-                                                }}
-                                            /> шт
-                                        </div>
-                                        <div className="info-cart price">
-                                            {item.price * item.quantity} грн
-                                        </div>
+                                                            setCart(prev =>
+                                                                prev.map(i =>
+                                                                    i.ticket_date_id === t.date_id
+                                                                        ? { ...i, quantity: value }
+                                                                        : i
+                                                                )
+                                                            );
+                                                        }}
+                                                        onBlur={() => {
+                                                            updateQuantity(item.id, t.quantity);
+                                                        }}
+                                                    /> шт
+                                                </div>
+
+                                                <div className="info-cart price">
+                                                    {item.price * t.quantity} грн
+                                                </div>
+                                            </div>
+                                        )}
                                         <button
                                             onClick={() => {
                                                 setText(`Ви впевнені, що хочете видалити книгу зі свого кошику?`)

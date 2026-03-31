@@ -44,7 +44,6 @@ export function UserProvider({ children }) {
 
             const newUser = {
                 id: data.id,
-                login: data.login,
                 first_name: data.first_name,
                 last_name: data.last_name,
                 phone_number: data.phone_number,
@@ -77,7 +76,7 @@ export function UserProvider({ children }) {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || "Невірний логін або пароль");
+                throw new Error(data.error || "Невірна пошта або пароль");
             }
 
             setUser(data);
