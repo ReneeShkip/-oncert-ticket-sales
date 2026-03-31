@@ -3,7 +3,6 @@ const nodemailer = require('nodemailer');
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
-const { use } = require("react");
 const bcrypt = require("bcryptjs");
 const app = express();
 const fs = require('fs');
