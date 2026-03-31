@@ -7,7 +7,7 @@
     "react-dom": "^18.2.0"
   },
   "scripts": {
-    "build": "cd client && npm install && npm run build",
-    "start": "node server/index.jsx"
+    "build": "cd ticketstore && npm install && npm run build",
+    "start": "node backend/server.js"
   }
 }

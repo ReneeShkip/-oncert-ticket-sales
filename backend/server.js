@@ -13,7 +13,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-    origin: "http://localhost:5174",
+    origin: process.env.NODE_ENV === 'production'
+        ? 'https://-oncert-ticket-sales.onrender.com'
+        : 'http://localhost:5174',
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type"]
 }));
@@ -619,76 +621,6 @@ app.post("/edit_info", (req, res) => {
         }
     );
 });
-/*
-app.get("/posta", (req, res) => {
-    const query = `select id, posta from posta`;
- 
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "DB error" });
-        }
-        res.json(results);
-    });
-})
- 
-app.post("/departments", async (req, res) => {
-    const { ref } = req.body;
- 
-    try {
-        const response = await fetch("https://api.novaposhta.ua/v2.0/json/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                "apiKey": process.env.NOVA_POSHTA_API_KEY,
-                "modelName": "AddressGeneral",
-                "calledMethod": "getWarehouses",
-                "methodProperties": {
-                    "CityRef": ref
-                }
-            })
-        });
- 
-        const data = await response.json();
- 
-        if (!data.success) {
-            return res.status(400).json({ error: data.errors });
-        }
- 
-        res.json(data.data);
-    } catch (err) {
-        res.status(500).json({ error: "Nova Poshta API error" });
-    }
-});
- 
-app.post("/city", async (req, res) => {
-    const { city } = req.body;
- 
-    try {
-        const response = await fetch("https://api.novaposhta.ua/v2.0/json/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                "apiKey": process.env.NOVA_POSHTA_API_KEY,
-                "modelName": "AddressGeneral",
-                "calledMethod": "getCities",
-                "methodProperties": {
-                    "FindByString": city
-                }
-            })
-        });
-        const data = await response.json();
- 
-        if (!data.success) {
-            return res.status(400).json({ error: data.errors });
-        }
- 
-        res.json(data.data);
-    } catch (err) {
-        res.status(500).json({ error: "Nova Poshta API error" });
-    }
-});
-*/
 app.post("/make_order", (req, res) => {
     const { cart_ids, user_id } = req.body;
 
@@ -831,5 +763,13 @@ app.post("/del_ac", (req, res) => {
         }
     );
 });
+
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../ticketstore')));
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../ticketstore/index.html'));
+    });
+}
+
 
 app.listen(5000, () => console.log("Server running on port 5000"));
