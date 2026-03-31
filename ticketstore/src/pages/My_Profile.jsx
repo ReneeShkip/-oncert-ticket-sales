@@ -4,7 +4,7 @@ import { normalizeHistory } from "../utils/normalizedhistory"
 import Alert from "../components/Alert";
 import { UserContext } from "../context/UserContext";
 import './css/profile.css';
-import CitySelector from "../components/city_selector.jsx";
+import CitySelector from "../components/City_selector";
 
 async function editInfo(user) {
     const response = await fetch("http://localhost:5000/edit_info", {

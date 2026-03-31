@@ -5,7 +5,7 @@ import './css/style.css';
 import './css/catalog.css';
 import Loading from "./Loading";
 import { MoreContext } from "../context/MoreContext";
-import Subfilters from "../components/subfilters";
+import Subfilters from "../components/Subfilters";
 
 function generateCalendar(year, month) {
 
