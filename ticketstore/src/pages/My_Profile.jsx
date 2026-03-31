@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect } from "react";
 import Loading from "./Loading.jsx";
 import { normalizeHistory } from "../utils/normalizedhistory"
-import Alert from "../components/alert";
+import Alert from "../components/Alert";
 import { UserContext } from "../context/UserContext";
 import './css/profile.css';
 import CitySelector from "../components/city_selector.jsx";

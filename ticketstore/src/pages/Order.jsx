@@ -5,7 +5,7 @@ import Loading from "./Loading"
 import { CartContext } from "../context/CartContext";
 //import CitySelector from "../components/city_selector";
 import { MoreContext } from "../context/MoreContext";
-import Alert from "../components/alert";
+import Alert from "../components/Alert";
 import { useEmail } from "../utils/SendMail"
 
 export default function Order() {

@@ -4,7 +4,7 @@ import { UserContext } from "../context/UserContext";
 import { CartContext } from "../context/CartContext";
 import { useEvents } from "../context/EventContext";
 import { usePerformers } from "../context/AuthorContext";
-import Alert from "../components/alert";
+import Alert from "../components/Alert";
 import { MoreContext } from "../context/MoreContext";
 import Loading from "./Loading.jsx";
 import './css/cart.css';

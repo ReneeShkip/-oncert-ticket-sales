@@ -1,7 +1,7 @@
 import { useParams, NavLink, useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import "../pages/css/details.css";
-import Alert from "../components/alert";
+import Alert from "../components/Alert";
 import { useContext } from "react";
 import { UserContext } from "../context/UserContext";
 import { MoreContext } from "../context/MoreContext";
