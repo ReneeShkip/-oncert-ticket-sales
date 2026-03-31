@@ -764,9 +764,9 @@ app.post("/del_ac", (req, res) => {
 });
 
 if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '../ticketstore')));
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../ticketstore/index.html'));
+    app.use(express.static(path.join(__dirname, '../ticketstore/dist')));
+    app.get('/{*path}', (req, res) => {
+        res.sendFile(path.join(__dirname, '../ticketstore/dist/index.html'));
     });
 }
 
