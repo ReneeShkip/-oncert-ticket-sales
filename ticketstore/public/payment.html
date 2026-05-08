@@ -1,0 +1,104 @@
+<style>
+
+</style>
+<div class="pay-wrap">
+  <div class="pay-card">
+    <div id="form-view">
+      <p class="pay-title">Оплата курсу <span class="badge">Тестовий режим</span></p>
+      <p class="pay-sub">Введіть дані картки для завершення покупки</p>
+      <div class="card-icons">
+        <div class="card-icon">VISA</div>
+        <div class="card-icon">MC</div>
+        <div class="card-icon">LPay</div>
+      </div>
+      <div class="price-row">
+        <span class="price-label">«Онлайн-квитки»</span>
+        <span class="price-amount">₴ 499</span>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Номер картки</label>
+        <input class="pay-input" id="card-num" placeholder="0000 0000 0000 0000" maxlength="19" />
+        <div class="err" id="err-card">Введіть коректний номер картки</div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label">Термін дії</label>
+          <input class="pay-input" id="expiry" placeholder="MM/РР" maxlength="5" />
+          <div class="err" id="err-exp">Невірний формат</div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">CVV</label>
+          <input class="pay-input" id="cvv" placeholder="•••" maxlength="3" type="password" />
+          <div class="err" id="err-cvv">3 цифри</div>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Ім'я на картці</label>
+        <input class="pay-input" id="name" placeholder="IVAN PETRENKO"
+          style="font-family: var(--font-sans); text-transform: uppercase;" />
+      </div>
+      <button class="pay-btn" id="pay-btn" onclick="handlePay()">Оплатити ₴ 499</button>
+      <p class="test-hint">Тестова картка: 4242 4242 4242 4242 · 12/28 · 123</p>
+    </div>
+    <div class="success-box" id="success-view">
+      <div class="check-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M5 12l5 5L19 7" stroke="#3b6d11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+      <p class="success-title">Оплата успішна!</p>
+      <p class="success-sub">Покупка квитків<br>Лист з підтвердженням надіслано на email.</p>
+      <button class="reset-btn" onclick="reset()">Спробувати ще раз</button>
+    </div>
+  </div>
+</div>
+<script>
+  const cardInput = document.getElementById('card-num');
+  const expiryInput = document.getElementById('expiry');
+
+  cardInput.addEventListener('input', e => {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 16);
+    e.target.value = v.replace(/(.{4})/g, '$1 ').trim();
+  });
+
+  expiryInput.addEventListener('input', e => {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+    if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
+    e.target.value = v;
+  });
+
+  function showErr(id, show) {
+    document.getElementById(id).style.display = show ? 'block' : 'none';
+  }
+
+  function handlePay() {
+    const card = cardInput.value.replace(/\s/g, '');
+    const exp = expiryInput.value;
+    const cvv = document.getElementById('cvv').value;
+    let ok = true;
+
+    if (card.length < 16) { showErr('err-card', true); ok = false; } else showErr('err-card', false);
+    if (!/^\d{2}\/\d{2}$/.test(exp)) { showErr('err-exp', true); ok = false; } else showErr('err-exp', false);
+    if (cvv.length < 3) { showErr('err-cvv', true); ok = false; } else showErr('err-cvv', false);
+
+    if (!ok) return;
+
+    const btn = document.getElementById('pay-btn');
+    btn.disabled = true;
+    btn.textContent = 'Обробка...';
+    setTimeout(() => {
+      document.getElementById('form-view').style.display = 'none';
+      document.getElementById('success-view').style.display = 'block';
+    }, 1800);
+  }
+
+  function reset() {
+    document.getElementById('form-view').style.display = 'block';
+    document.getElementById('success-view').style.display = 'none';
+    document.getElementById('pay-btn').disabled = false;
+    document.getElementById('pay-btn').textContent = 'Оплатити ₴ 499';
+    cardInput.value = ''; expiryInput.value = '';
+    document.getElementById('cvv').value = '';
+    document.getElementById('name').value = '';
+  }
+</script>

@@ -60,36 +60,39 @@ export default function PerformerDetails() {
                 <img src={`/img/covers/${performer.photo}`} alt="photo" className="book_cover" />
             </div>
             <div className="info">
-                <h1>{performer.first_name}</h1>
+
+                <div className="perf_name">
+                    <h1>{performer?.[lang].name}
+                    </h1>
+                    {performer.links ? (
+                        <a href={performer.links} className="au_short_info link">
+                            <img src={`/svg/linker_svg_${theme}.svg`} alt="link" className="link" />
+                        </a>
+                    ) : null}
+
+                </div>
                 <TextMore text={performer?.[lang].biography} />
                 {performer.events.length > 0 && (
                     <div className="books">
-                        <div className="soc">
-
-                            {performer.links ? (
-                                <a href={performer.links} className="au_short_info link">
-                                    <div className="link_container">{translator?.[lang].Soc}
-                                        <img src={`/svg/linker_svg_${theme}.svg`} alt="link" className="link" />
-                                    </div>
-                                </a>
-                            ) : null}
-                        </div>
                         <h2>{translator?.[lang].Eventer}</h2>
-                        <ul className="listbook">
+                        <div className="listbook">
                             {performerEvents.map(event => (
-                                <li className="option_book" key={event.id}>
-                                    <div className="au_short_info" key={0}>
+                                <div key={event.id}>
 
-                                        <NavLink
-                                            key={event.id}
-                                            to={`/event/details/${event.id}`}
-                                        >
-                                            <div className="au_short_info">{event?.[lang].title}</div>
-                                        </NavLink>
-                                    </div>
-                                </li>
+                                    <NavLink
+                                        key={event.id}
+                                        to={`/event/details/${event.id}`}
+                                    >
+                                        <div className="au_short_info">
+                                            <div className="img_container">
+                                                <img src={`/img/covers/${event.cover}`} className="cover" />
+                                            </div>
+                                            <p className="no_p">{event?.title}</p>
+                                        </div>
+                                    </NavLink>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     </div>
                 )}
             </div>

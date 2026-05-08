@@ -12,6 +12,8 @@ export default function Chat() {
     const [mychater, setMyChat] = useState([]);
     const [isAllOpen, setAllOpen] = useState(false);
     const [activeChatId, setActiveChatId] = useState(null);
+    const [isConsultant, setIsConsultant] = useState(false);
+
 
     useEffect(() => {
         if (!isAuth || !user?.id) return;
@@ -109,7 +111,7 @@ export default function Chat() {
                                 <div className="message system">
                                     {user.role != "admin" &&
                                         <div className="inner">
-                                            Вітаємо, ви можете написати своє питання, і консультант відповість вам у робочі години
+                                            Чим ми можемо вам допомогти? Якщо вашого питання немає серед запропонованих, залиште повідомлення, і ви отримаєте відповідь у робочі години: з 9:00 до 18:00.
                                         </div>
                                     }
                                 </div>
@@ -125,7 +127,7 @@ export default function Chat() {
                                 </div>
                             </div>
                             <div className="wraper">
-                                <input
+                                <textarea
                                     value={input}
                                     onChange={e => setInput(e.target.value)}
                                 />

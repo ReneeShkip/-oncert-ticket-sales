@@ -19,20 +19,34 @@
         width: 90px;
         padding: 20px;
         margin: 10px;
+        justify-content: center;
+        transition: 0.5s;
+    }
+
+    .button_enter {
+        padding: 10px;
     }
 
     h2 {
-        font-size: 50px !important;
+        font-size: 40px !important;
         margin: 0;
     }
 }
 
+
+
 .log_section {
     background: white;
-    padding: 20px 30px;
-    width: 300px;
+    padding: 30px;
     border-radius: 10px;
     position: relative;
+
+    form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
 }
 
 .closer:hover {
@@ -47,9 +61,14 @@
     outline: none;
     transition: 0.2s;
     background-color: #5B86CB;
-    margin: 10px;
+    margin: 0 10px;
     color: #F4DCDC;
     font-weight: bold;
+    width: 250px;
+}
+
+.phone {
+    margin: 0 20px 0 0;
 }
 
 .inputs:focus {
@@ -64,13 +83,23 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 10px;
+
+    h4 {
+        font-family: '';
+        font-size: 17px;
+        padding-bottom: 15px;
+    }
 }
 
 .button_enter:hover,
 .button_sign:hover {
-    background: #F4DCDC !important;
+    background: #6C0820 !important;
+    color: #F4ADBD;
 }
 
 .button_sign {
+    margin: 0;
+    padding: 10px !important;
     width: auto !important;
 }

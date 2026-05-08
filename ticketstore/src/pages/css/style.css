@@ -23,12 +23,33 @@ html {
         color: #F4DCDC;
         font-family: ff;
         font-size: 25px;
+        transition: 0.2s;
+    }
+
+    .but_lang:hover {
+        color: #f4adbd;
     }
 
     .personal-popup {
         button {
             margin: 0;
             font-size: 18px;
+        }
+
+        .s-container {
+            display: flex;
+
+        }
+
+        .simple {
+            padding: 0;
+            font-size: 16px;
+            border-radius: 0;
+        }
+
+        .simple:hover {
+            background: none;
+            color: #f4adbd;
         }
 
         .closer {
@@ -93,6 +114,7 @@ html {
     align-items: center;
     justify-content: flex-end;
     width: 70%;
+    margin-top: 10px;
 }
 
 .filter-toggle {
@@ -162,7 +184,7 @@ html {
 .closer {
     width: 50px !important;
     height: 50px !important;
-    margin-bottom: 300px !important;
+    margin-bottom: 330px !important;
     text-align: center !important;
     justify-content: center !important;
     border-radius: 100% !important;
@@ -170,9 +192,7 @@ html {
 
 .modal_loger_register {
     .closer {
-
-
-        margin-bottom: 450px !important;
+        margin-bottom: 440px !important;
     }
 }
 
@@ -189,7 +209,6 @@ html {
     gap: 12px;
     z-index: 5;
     animation: fadeIn 0.18s ease-out;
-    width: 140px;
 }
 
 .personal-popup button,
@@ -200,10 +219,11 @@ html {
     border-radius: 8px;
     cursor: pointer;
     text-align: center;
-    font-size: 16px;
+    font-size: 18px;
     transition: 0.2s;
     color: #F4DCDC;
-    padding: 10px 0 10px 5px;
+    padding: 10px 5px;
+    font-family: '';
 }
 
 .personal-popup button:hover,

@@ -154,6 +154,21 @@ export default function Subfilters({ filters, setFilters }) {
         matrix.push(genres.slice(i, i + columns));
     }
 
+    const сityColumns = Math.ceil(Math.sqrt(country.length));
+    const сityMatrix = [];
+
+    for (let i = 0; i < country.length; i += сityColumns) {
+        сityMatrix.push(country.slice(i, i + сityColumns));
+    }
+
+    const typeColumns = Math.ceil(Math.sqrt(types.length));
+    const typeMatrix = [];
+
+    for (let i = 0; i < types.length; i += typeColumns) {
+        typeMatrix.push(types.slice(i, i + typeColumns));
+    }
+
+
     return (
         <div className="filter-popup">
             {filters.length === 0 ?
@@ -211,21 +226,25 @@ export default function Subfilters({ filters, setFilters }) {
                             <div ref={typesref}>
                                 <div onClose={() => setTypesOpen(false)}>
                                     <div className="matrix list">
-                                        {types.map(type => (
-                                            <li key={type.id} className="type_list">
-                                                <label className="checkbox_label">
-                                                    <input name="type" type="checkbox"
-                                                        value={type.type}
-                                                        className="hidden_checkbox"
-                                                        checked={filters.types.includes(type.ID)}
-                                                        onChange={(e) =>
-                                                            handleCheckboxChange("types", type.ID, e.target.checked)
-                                                        } />
-                                                    <span className="genres_item">
-                                                        {type[`type_${lang}`]}
-                                                    </span>
-                                                </label>
-                                            </li>
+                                        {typeMatrix.map((row, rowIndex) => (
+                                            <ul key={rowIndex} className="genres_row">
+                                                {row.map(type => (
+                                                    <li key={type.id}>
+                                                        <label className="checkbox_label">
+                                                            <input name="type" type="checkbox"
+                                                                value={type.type}
+                                                                className="hidden_checkbox"
+                                                                checked={filters.types.includes(type.ID)}
+                                                                onChange={(e) =>
+                                                                    handleCheckboxChange("types", type.ID, e.target.checked)
+                                                                } />
+                                                            <span className="genres_item">
+                                                                {type[`type_${lang}`]}
+                                                            </span>
+                                                        </label>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         ))}
                                     </div>
                                 </div>
@@ -236,22 +255,27 @@ export default function Subfilters({ filters, setFilters }) {
                             <div ref={countryref}>
                                 <div onClose={() => setCountryOpen(false)}>
                                     <div className="matrix llister">
-                                        {country.map(c => (
-                                            <li key={c.id} className="type_list">
-                                                <label className="checkbox_label">
-                                                    <input name="genres" type="checkbox"
-                                                        value={c.name}
-                                                        key={`country_${c.id}`}
-                                                        className="hidden_checkbox"
-                                                        checked={filters.country.includes(c.ID)}
-                                                        onChange={(e) =>
-                                                            handleCheckboxChange("country", c.ID, e.target.checked)
-                                                        } />
-                                                    <span className="genres_item">
-                                                        {c[`name_${lang}`]}
-                                                    </span>
-                                                </label>
-                                            </li>
+
+                                        {сityMatrix.map((row, rowIndex) => (
+                                            <ul key={rowIndex} className="genres_row">
+                                                {row.map(c => (
+                                                    <li key={c.id}>
+                                                        <label className="checkbox_label">
+                                                            <input
+                                                                name="country" type="checkbox"
+                                                                value={c.genre}
+                                                                className="hidden_checkbox"
+                                                                checked={filters.country.includes(c.ID)}
+                                                                onChange={(e) =>
+                                                                    handleCheckboxChange("country", c.ID, e.target.checked)
+                                                                } />
+                                                            <span className="genres_item">
+                                                                {c[`name_${lang}`]}
+                                                            </span>
+                                                        </label>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         ))}
                                     </div>
                                 </div>

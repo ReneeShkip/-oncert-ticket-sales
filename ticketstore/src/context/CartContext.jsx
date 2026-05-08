@@ -14,8 +14,9 @@ export function CartProvider({ children }) {
 
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:5000/cart?user_id=${user.id}`);
+            const res = await fetch(`http://localhost:5000/cart?user_id=${user.id}&role=${user.role}`);
             const data = await res.json();
+            console.log("cart data:", data);
             setCart(data);
         } catch (err) {
             console.error(err);
@@ -26,7 +27,7 @@ export function CartProvider({ children }) {
 
     useEffect(() => {
         fetchCart();
-    }, [isAuth, user?.id]);
+    }, [isAuth, user]);
 
     const addToCart = async (ticket_date_id, quantity = 1) => {
         const body = {
@@ -52,7 +53,6 @@ export function CartProvider({ children }) {
         }
     };
 
-
     const updateQuantity = async (id, qty) => {
         try {
             await fetch(`http://localhost:5000/cart/${id}`, {
@@ -75,10 +75,11 @@ export function CartProvider({ children }) {
         }
 
         try {
-            const res = await fetch(
-                `http://localhost:5000/cart/${id}?user_id=${user.id}`,
-                { method: "DELETE" }
-            );
+            const res = await fetch("http://localhost:5000/cart", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: user.id, id: id, isReturn: false })
+            })
 
             if (!res.ok) throw new Error("Remove item failed");
 
@@ -91,9 +92,11 @@ export function CartProvider({ children }) {
     const removeAll = async () => {
         try {
             const res = await fetch(
-                `http://localhost:5000/cart?user_id=${user.id}`,
-                { method: "DELETE" }
-            );
+                `http://localhost:5000/cart`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: user.id, isReturn: false })
+            });
 
             if (!res.ok) throw new Error("Remove all failed");
 

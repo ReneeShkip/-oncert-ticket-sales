@@ -26,7 +26,13 @@ export default function Alert({ text, onConfirm, onCancel }) {
                         {onConfirm &&
                             <button onClick={onCancel}>{translator?.[lang].btn}</button>
                         }
-                        <button className={`ok_btn ${!onConfirm ? "just_info" : ""}`} onClick={onConfirm ?? onCancel}>ОК</button>
+                        <button onClick={() => {
+                            console.log("OK clicked, onConfirm:", onConfirm); // ← що це?
+                            if (onConfirm) onConfirm();
+                            onCancel();
+                        }}>
+                            ОК
+                        </button>
                     </div>
                 </div>
             </div>

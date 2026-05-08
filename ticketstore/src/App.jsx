@@ -21,7 +21,7 @@ function AppContent() {
       <Chat />
       <main><Outlet /></main>
       {cart.map(item => (
-        <Timer key={`timer_${item.id}`} secondsLeft={item.seconds_left} />
+        <Timer key={`timer_${item.id}`} secondsLeft={item.seconds_left} user_id={item.user_id} />
       ))}
       <a href="#top" className="top" key="top">
         <img

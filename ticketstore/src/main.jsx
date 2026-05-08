@@ -15,6 +15,8 @@ import Cart from "./pages/Cart.jsx";
 import Returner from "./pages/Returner.jsx";
 import Cart_for_admins from "./pages/Cart_for_admins.jsx";
 import Publisher_Details from "./pages/Publisher_details.jsx";
+import Cooperation from "./pages/Cooperation"
+import Payment from "./pages/Payment.jsx";
 
 const router = createBrowserRouter([
   {
@@ -34,9 +36,12 @@ const router = createBrowserRouter([
       { path: "/order", element: <Order /> },
       { path: "/admin/cart", element: <Cart_for_admins /> },
       { path: "/returner", element: <Returner /> },
-      //{ path: "/verify/:id", element: <Verify /> },
+      { path: "/form-cooperation", element: <Cooperation /> },
       { path: "*", element: <NotFound /> },
     ],
+  },
+  {
+    path: "payment", element: <Payment />
   },
 ]);
 

@@ -14,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({
     origin: process.env.NODE_ENV === 'production'
         ? 'https://-oncert-ticket-sales.onrender.com'
-        : 'http://localhost:5174',
+        : 'http://localhost:3000',
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type"]
 }));
@@ -33,6 +33,25 @@ const transporter = nodemailer.createTransport({
 const QRCode = require('qrcode');
 const puppeteer = require('puppeteer');
 const { buildTicketHTML } = require('./templates/ticketTemplate');
+
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, '../ticketstore/public/img/covers/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueName = `${Date.now()}_${file.originalname}`;
+        cb(null, uniqueName);
+    }
+});
+
+const upload = multer({ storage });
+
+app.post('/upload_photo', upload.single('photo'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file' });
+    res.json({ filename: req.file.filename });
+});
 
 app.post('/send-email', async (req, res) => {
     const { user, order } = req.body;
@@ -56,7 +75,7 @@ app.post('/send-email', async (req, res) => {
                 await transporter.sendMail({
                     from: `"EVENT//ERA" <${process.env.EMAIL_USER}>`,
                     to: user.email,
-                    subject: `Квиток — ${event.ukr.title}`,
+                    subject: `Квиток — ${event.title}`,
                     html: `<p>Ваш квиток у вкладенні.</p>`,
                     attachments: [{
                         filename: `ticket-${ticket.date_id}.pdf`,
@@ -75,15 +94,94 @@ app.post('/send-email', async (req, res) => {
     }
 });
 
-app.post('/webhook/payment-success', async (req, res) => {
-    const order = await Order.findById(req.body.orderId);
+app.post('/validation', async (req, res) => {
+    const { email, code } = req.body;
 
-    for (const tickets of order.tickets) {
-        await sendTicketEmail(tickets);
+    try {
+        const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+        await transporter.sendMail({
+            from: `"EVENT//ERA" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: `Підтвердження пошти`,
+            html: `<h2>Підтвердіть свою пошту</h2><br><p>Дякуємо, що обираєте наш сайт!<h2></h2>Для завершення реєстрації, вам потрібно ввести код.</p><h3>${code}</h3>`,
+        });
+        await browser.close();
+        res.json({ success: true, message: 'Email надіслано!' });
+
+    } catch (error) {
+        console.error('Email error:', error);
+        res.status(500).json({ error: error.message });
     }
-
-    res.json({ ok: true });
 });
+
+const notify = async (userId, isConfirmed) => {
+    return new Promise((resolve, reject) => {
+        db.query('SELECT * FROM users WHERE id = ?', [userId], async (err, results) => {
+            if (err) return reject(err);
+
+            const user = results[0];
+            if (!user) return reject(new Error("User not found"));
+
+            try {
+                await transporter.sendMail({
+                    from: `"EVENT//ERA" <${process.env.EMAIL_USER}>`,
+                    to: user.email,
+                    subject: `Ваша заявка була переглянута`,
+                    html: isConfirmed
+                        ? `<h2>Дякуємо за бажання співпраці</h2><p>Раді вас повідомити, що адміністрація готова надати вам можливість продавати свої квитки на нашій платформі</p>`
+                        : `<h2>Дякуємо за бажання співпраці</h2><p>Але, на жаль, ми мусимо відмовити вам у співпраці</p>`,
+                });
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        });
+    });
+};
+
+const cancelEvent = async (date_id, eventTitle = "подія") => {
+    const [results] = await db.promise().query(
+        'SELECT u.email, c.id FROM cart c JOIN users u ON c.user_id = u.id WHERE ticket_date_id = ?',
+        [date_id]
+    );
+
+    if (!results.length) return;
+
+    const ids = results.map(r => r.id);
+    const emails = results.map(r => r.email);
+
+    await db.promise().query('DELETE FROM cart WHERE id IN (?)', [ids]);
+
+    await Promise.all(emails.map(email =>
+        transporter.sendMail({
+            from: `"EVENT//ERA" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: `Скасування події`,
+            html: `<h2>Нам дуже шкода</h2><p>На жаль, подія "${eventTitle}" була скасована.</p>`,
+        })
+    ));
+};
+
+const RejectDeleteRequest = async (id) => {
+    const [results] = await db.promise().query(
+        'SELECT u.email, o.name_ukr FROM organization o JOIN users u ON o.user_id = u.id WHERE o.id = ?',
+        [id]
+    );
+
+    if (!results.length) return;
+
+    const names = results.map(r => r.name_ukr);
+    const emails = results.map(r => r.email);
+
+    await Promise.all(emails.map(email =>
+        transporter.sendMail({
+            from: `"EVENT//ERA" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: `Відмова у видаленні виконавця`,
+            html: `<h2>На жаль, ми не можемо зупини співпрацю</h2><p>На даний момент ви моєте незакінчені умови з платформою, тому виконавець "${names[0]}" не може бути видалений. Будь ласка, зв'яжіться з адміністрацією для подальших інструкцій.</br>Але щоб мати доступ до редагування виконавця, увійдіть на платформу заново.</p>`,
+        })
+    ));
+};
 
 const db = mysql.createPool({
     host: "localhost",
@@ -103,23 +201,24 @@ app.get("/tickets", (req, res) => {
     dates.id AS date_id,
     dates.date,
     dates.quantity,
+    dates.status,
     location.address_ukr,
     location.address_eng,
     country.id as country_id,
+    country.name_ukr as country_ukr,
+    country.name_eng as country_eng,
     type.type_ukr,
     type.type_eng,
-    country.name_ukr,
-    country.name_eng,
     sub_authors.sub_organization as org_id,
 	genres.id as genre_id,
     genres.genre_ukr,
     genres.genre_eng
         FROM dates
-        JOIN tickets ON tickets.id = dates.ticket_id
-        JOIN location ON location.id = dates.location_id
-        JOIN country ON country.id = location.country_id
-        LEFT JOIN tickets_genre ON tickets_genre.ticket_id = tickets.id
-        LEFT JOIN genres ON genres.id = tickets_genre.genre_id
+        RIGHT JOIN tickets ON tickets.id = dates.ticket_id
+        LEFT JOIN location ON location.id = dates.location_id
+        LEFT JOIN country ON country.id = location.country_id
+        LEFT JOIN ticket_genre ON ticket_genre.ticket_id = tickets.id
+        LEFT JOIN genres ON genres.id = ticket_genre.genre_id
         LEFT JOIN sub_authors ON tickets.id = sub_authors.ticket_id
         JOIN type ON type.id = tickets.type_id
 `;
@@ -159,9 +258,12 @@ app.get("/types", (req, res) => {
 
 app.get("/organizations", (req, res) => {
     const query = `
-    SELECT sa.ticket_id as event_id, o.id as org_id, o.*
-    FROM organization o
-    RIGHT JOIN sub_authors sa ON sa.sub_organization = o.id
+    SELECT
+    o.id as org_id,
+    o.*,
+    sa.ticket_id as event_id
+FROM organization o
+LEFT JOIN sub_authors sa ON sa.sub_organization = o.id
 `;
 
     db.query(query, (err, results) => {
@@ -185,49 +287,20 @@ app.get("/country", (req, res) => {
     });
 });
 
-/*app.get("/books", (req, res) => {
-    const categoryIdentifier = req.query.category;
-    const limit = parseInt(req.query.limit) || 7;
-    const offset = parseInt(req.query.offset) || 0;
- 
-    if (!categoryIdentifier) {
-        return res.status(400).json({ error: "Category is required" });
-    }
- 
-    const getCategoryQuery = `
-        SELECT view_name, name 
-        FROM categories 
-        WHERE id = ? OR name = ? OR view_name = ?
-    `;
- 
-    db.query(getCategoryQuery, [categoryIdentifier, categoryIdentifier, categoryIdentifier], (err, categoryResults) => {
-        if (err) {
-            console.error("SQL error:", err);
-            return res.status(500).json({ error: "Database error" });
-        }
- 
-        if (categoryResults.length === 0) {
-            return res.status(404).json({ error: "Category not found" });
-        }
- 
-        const viewName = categoryResults[0].view_name;
- 
-        const query = `SELECT * FROM ${mysql.escapeId(viewName)} ORDER BY price DESC LIMIT ? OFFSET ?`;
- 
-        db.query(query, [limit, offset], (err, results) => {
-            if (err) {
-                console.error("SQL error:", err);
-                return;
-            }
-            res.json(results);
-        });
+app.post("/user", (req, res) => {
+    const { id } = req.body;
+    const query = "SELECT * FROM users WHERE id = ?";
+
+    db.query(query, [id], (err, results) => {
+        if (err) return res.status(500).json({ error: "Failed to fetch user" });
+        res.json(results[0]);
     });
-});*/
+});
 
 app.post("/log_in", (req, res) => {
     const { email, password } = req.body;
     db.query(
-        `SELECT id, first_name, last_name, password, phone_number, role, email, city
+        `SELECT id, first_name, last_name, password, phone_number, role, email
          FROM users
          WHERE email = ?
          LIMIT 1`,
@@ -250,10 +323,22 @@ app.post("/log_in", (req, res) => {
                 phone_number: user.phone_number,
                 role: user.role,
                 email: user.email,
-                city: user.city
             });
         }
     );
+});
+
+app.put("/cancel_event", async (req, res) => {
+    const { ticket_date_id, event } = req.body;
+
+    try {
+        await cancelEvent(ticket_date_id, event.title);
+        await db.promise().query('UPDATE dates SET status = 3 WHERE id = ?', [ticket_date_id]);
+        res.json({ message: "Event cancelled" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post("/sign_up", async (req, res) => {
@@ -276,6 +361,7 @@ app.post("/sign_up", async (req, res) => {
             [first_name, last_name, email, passwordHash, phone_number, role],
             (err, results) => {
                 if (err) {
+                    console.error("DB ERROR:", err);
                     return res.status(500).json({ error: "Server error", details: err.message });
                 }
 
@@ -289,9 +375,38 @@ app.post("/sign_up", async (req, res) => {
                 });
             }
         );
+
     } catch (err) {
+        console.error("HASH ERROR:", err);
         res.status(500).json({ error: "Password hashing failed" });
     }
+});
+
+app.get("/all_orders", async (req, res) => {
+    const query = `
+    SELECT 
+        c.id as cart_id,
+        c.quantity,
+        c.ticket_date_id,
+        u.id as user_id,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.phone_number,
+        u.email,
+        o.id as order_id,
+        o.date_and_time
+    FROM cart c
+    JOIN orders o ON o.id = c.in_order
+    JOIN users u ON u.id = c.user_id
+`;
+    db.query(query, [], (err, results) => {
+        if (err) {
+            console.error("SQL error:", err);
+            return res.status(500).json({ error: "Failed to fetch users" });
+        }
+        res.json(results);
+    });
 });
 
 app.get("/filteredbooks", (req, res) => {
@@ -408,17 +523,22 @@ app.get("/comments/:bookType", (req, res) => {
 });
 
 app.get("/cart", (req, res) => {
-    const user_id = req.query.user_id;
+    const { user_id, role } = req.query;
 
     if (!user_id) {
         return res.status(400).json({ error: "No user_id provided" });
     }
 
-    const query = `
-             SELECT cart.* FROM cart WHERE in_order is null;
-    `;
+    let query = `SELECT cart.* FROM cart`;
+    const params = [];
 
-    db.query(query, [user_id], (err, results) => {
+    if (role != "admin") {
+        query += " WHERE in_order IS NULL AND user_id = ?";
+        params.push(user_id);
+    }
+
+
+    db.query(query, params, (err, results) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ error: "DB error" });
@@ -438,58 +558,55 @@ app.get("/cart", (req, res) => {
     });
 });
 
-app.post("/add_cart", (req, res) => {
+app.get("/applications", async (req, res) => {
+    const [applications] = await db.promise().query("select s.id as status_the_status_id, s.status_ukr, s.status_eng, a.*, u.first_name, u.last_name, u.phone_number, u.email, a.id as apply_id from applications a join users u on u.id = a.user_id join apply_statuses s on s.id = a.status");
+    const [questions] = await db.promise().query("SELECT * FROM application_questions ORDER BY id");
+    res.json({ applications, questions });
+});
 
+app.post("/add_cart", (req, res) => {
     const { user_id, ticket_date_id, quantity } = req.body;
 
     if (!user_id || !ticket_date_id) {
-        return res.status(400).json({
-            error: "Missing required fields",
-            received: { user_id, ticket_date_id },
-            reserved_until: new Date(Date.now() + 15 * 60 * 1000)
-        });
+        return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const checkQuery = `
-        SELECT * FROM cart 
-        WHERE user_id = ? AND ticket_date_id = ? AND in_order IS NULL;
-    `;
-
-    db.query(checkQuery, [user_id, ticket_date_id], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Server error" });
-        }
-
-        if (results.length > 0) {
-            const newQuantity = results[0].quantity + (quantity || 1);
+    db.query(
+        `SELECT id, quantity FROM dates WHERE id = ?`,
+        [ticket_date_id],
+        (err, dateResults) => {
+            if (err) return res.status(500).json({ error: "Server error" });
+            if (!dateResults.length || dateResults[0].quantity < 1) {
+                return res.status(400).json({ error: "No tickets available" });
+            }
 
             db.query(
-                `UPDATE cart SET quantity = ? WHERE id = ?`,
-                [newQuantity, results[0].id],
-                (err) => {
-                    if (err) {
-                        console.error(err);
-                        return res.status(500).json({ error: "Server error" });
-                    }
-                    res.json({ message: "Quantity updated" });
-                }
-            );
-        } else {
-            db.query(
-                `INSERT INTO cart (user_id, ticket_date_id, quantity, reserved_until)
-                 VALUES (?, ?, ?, UTC_TIMESTAMP() + INTERVAL 15 MINUTE)`,
-                [user_id, ticket_date_id, quantity || 1],
-                (err) => {
-                    if (err) {
-                        console.error(err);
-                        return res.status(500).json({ error: "Server error" });
-                    }
-                    res.json({ message: "Added to cart" });
+                `SELECT * FROM cart WHERE user_id = ? AND ticket_date_id = ? AND in_order IS NULL`,
+                [user_id, ticket_date_id],
+                (err, cartResults) => {
+                    if (err) return res.status(500).json({ error: "Server error" });
+
+                    const cartQuery = cartResults.length > 0
+                        ? [`UPDATE cart SET quantity = ? WHERE id = ?`,
+                            [cartResults[0].quantity + (quantity || 1), cartResults[0].id]]
+                        : [`INSERT INTO cart (user_id, ticket_date_id, quantity, reserved_until) VALUES (?, ?, ?, UTC_TIMESTAMP() + INTERVAL 15 MINUTE)`,
+                            [user_id, ticket_date_id, quantity || 1]];
+
+                    db.query(...cartQuery, (err) => {
+                        if (err) return res.status(500).json({ error: "Server error" });
+                        db.query(
+                            `UPDATE dates SET quantity = quantity - 1 WHERE id = ?`,
+                            [ticket_date_id],
+                            (err) => {
+                                if (err) return res.status(500).json({ error: "Server error" });
+                                res.json({ message: "Added to cart" });
+                            }
+                        );
+                    });
                 }
             );
         }
-    });
+    );
 });
 
 app.put("/cart/:id", (req, res) => {
@@ -511,43 +628,75 @@ app.put("/cart/:id", (req, res) => {
     });
 });
 
-setInterval(() => {
-    db.query('DELETE FROM cart WHERE reserved_until < UTC_TIMESTAMP() AND in_order IS NULL');
+setInterval(async () => {
+    try {
+        const connection = await db.promise().getConnection();
+        try {
+            await connection.beginTransaction();
+            const [results] = await connection.query(
+                'SELECT id, ticket_date_id, quantity FROM cart WHERE reserved_until < UTC_TIMESTAMP() AND in_order IS NULL'
+            );
+            if (!results.length) return connection.release();
+            const ids = results.map(r => r.id);
+            await connection.query('DELETE FROM cart WHERE id IN (?)', [ids]);
+            await restoreQuantities(connection, results);
+            await connection.commit();
+        } catch (err) {
+            await connection.rollback();
+            console.error("Interval error:", err);
+        } finally {
+            connection.release();
+        }
+
+    } catch (err) {
+        console.error("Connection error:", err);
+    }
 }, 60 * 1000);
 
-app.delete("/cart/:id", (req, res) => {
-    const { id } = req.params;
-    const { user_id } = req.query;
+const restoreQuantities = async (connection, rows) => {
+    for (const row of rows) {
+        await connection.query(
+            "UPDATE dates SET quantity = quantity + ? WHERE id = ?",
+            [row.quantity, row.ticket_date_id]
+        );
+    }
+};
 
-    const query = `DELETE FROM cart
-            WHERE book_id = ? and user_id = ?
-            AND in_order IS NULL
-`;
+app.delete("/cart", async (req, res) => {
+    const { user_id, id, isReturn } = req.body;
 
-    db.query(query, [id, user_id], (err) => {
-        if (err) {
-            console.error("SQL error:", err);
-            return res.status(500).json({ error: "Server error" });
-        }
-        res.json({ message: "Item removed" });
-    });
-});
+    const connection = await db.promise().getConnection();
 
-app.delete("/cart", (req, res) => {
-    const { user_id } = req.query;
+    try {
+        await connection.beginTransaction();
 
-    const query = `DELETE FROM cart
-        WHERE user_id = ?
-        AND in_order IS NULL`;
+        const [rows] = await connection.query(
+            `SELECT ticket_date_id, quantity FROM cart 
+             WHERE user_id = ? ${!isReturn ? "AND in_order IS NULL" : ""}
+             ${id ? "AND id = ?" : ""}`,
+            id ? [user_id, id] : [user_id]
+        );
 
-    db.query(query, [user_id], (err, result) => {
-        if (err) {
-            console.error("SQL error:", err);
-            return res.status(500).json({ error: "Server error" });
-        }
+        await restoreQuantities(connection, rows);
 
-        res.json({ deleted: result.affectedRows });
-    });
+        await connection.query(
+            `DELETE FROM cart 
+             WHERE user_id = ? ${!isReturn ? "AND in_order IS NULL" : ""}
+             ${id ? "AND id = ?" : ""}`,
+            id ? [user_id, id] : [user_id]
+        );
+
+        await connection.commit();
+        res.json({ message: id ? "Item removed" : "Cart cleared" });
+
+    } catch (err) {
+        await connection.rollback();
+        console.error("SQL error:", err);
+        res.status(500).json({ error: "Server error" });
+
+    } finally {
+        connection.release();
+    }
 });
 
 app.get("/history", (req, res) => {
@@ -555,33 +704,11 @@ app.get("/history", (req, res) => {
     const params = [];
 
     let query = `
-        SELECT
-        o.id as id,
-        u.id AS user_id,
-        u.first_name as userer,
-        u.isActive,
-        c.id AS cart_id,
-        bt.id AS ID,
-        b.title,
-        bt.price,
-        concat(a.first_name, ' ', a.last_name) as author,
-        c.quantity,
-        t.type,
-        s.id as status,
-        s.status as name_status,
-        o.date_and_time
-    FROM orders o
-    JOIN cart c ON c.in_order = o.id
-    JOIN book_type bt ON bt.id = c.book_id
-    JOIN books b ON b.id = bt.book_id
-    JOIN authors a ON a.id = b.author
-    JOIN users u ON u.id = c.user_id
-    JOIN type t ON t.id = bt.type_id
-    JOIN statuses s ON s.id = o.status_id
+        SELECT * FROM tickets.cart
     `;
 
     if (user_id) {
-        query += "WHERE u.id = ? ORDER BY s.id;"
+        query += "WHERE user_id = ?"
         params.push(user_id);
     }
 
@@ -595,7 +722,7 @@ app.get("/history", (req, res) => {
 });
 
 app.post("/edit_info", (req, res) => {
-    const { id, first_name, last_name, phone_number, email, city } = req.body;
+    const { id, first_name, last_name, phone_number, email } = req.body;
 
     if (!id) {
         return res.status(400).json({ error: "User id is required" });
@@ -603,9 +730,9 @@ app.post("/edit_info", (req, res) => {
 
     db.query(
         `UPDATE users
-         SET first_name = ?, last_name = ?, phone_number = ?, email = ?, city = ?
+         SET first_name = ?, last_name = ?, phone_number = ?, email = ?
          WHERE id = ?`,
-        [first_name, last_name, phone_number, email, city, id],
+        [first_name, last_name, phone_number, email, id],
         (err, result) => {
             if (err) {
                 console.error(err);
@@ -620,6 +747,34 @@ app.post("/edit_info", (req, res) => {
         }
     );
 });
+
+app.post("/edit_performer", (req, res) => {
+    const { id, name_ukr, name_eng, biography_ukr, biography_eng, photo, links } = req.body;
+
+    if (!id) {
+        return res.status(400).json({ error: "User id is required" });
+    }
+
+    db.query(
+        `UPDATE organization
+         SET name_ukr = ?, name_eng = ?, biography_ukr = ?, biography_eng = ?, photo = ?, links = ?
+         WHERE id = ?`,
+        [name_ukr, name_eng, biography_ukr, biography_eng, photo, links, id],
+        (err, result) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: "Server error" });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: "User not found" });
+            }
+
+            res.json({ message: "performer info updated" });
+        }
+    );
+});
+
 app.post("/make_order", (req, res) => {
     const { cart_ids, user_id } = req.body;
 
@@ -641,7 +796,7 @@ app.post("/make_order", (req, res) => {
             const orderId = result.insertId;
             db.query(
                 `UPDATE cart SET in_order = ? WHERE id IN (?)`,
-                [orderId, cart_ids, user_id],
+                [orderId, cart_ids],
                 (err2) => {
                     if (err2) {
                         console.error(err2);
@@ -743,24 +898,406 @@ app.post("/stat", (req, res) => {
     );
 });
 
-app.post("/del_ac", (req, res) => {
+const updateExpiredDates = () => {
+    db.query(
+        'UPDATE dates SET status = 2 WHERE status = 1 AND date < NOW()',
+        (err, result) => {
+            if (err) return console.error('Update error:', err);
+        }
+    );
+};
+
+updateExpiredDates();
+
+setInterval(updateExpiredDates, 24 * 60 * 60 * 1000);
+
+app.delete("/account", async (req, res) => {
+    const { user_id } = req.body;
+
+    const connection = await db.promise().getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        await connection.query(
+            "DELETE FROM cart WHERE user_id = ? AND in_order IS NULL",
+            [user_id]
+        );
+
+        await connection.query(
+            "UPDATE chat SET user_id = 23 WHERE user_id = ?",
+            [user_id]
+        );
+
+        await connection.query(
+            "UPDATE cart SET user_id = 23 WHERE user_id = ?",
+            [user_id]
+        );
+
+        await connection.query(
+            "DELETE FROM users WHERE id = ?",
+            [user_id]
+        );
+
+        await connection.commit();
+        res.json({ message: "Account deleted" });
+
+    } catch (err) {
+        await connection.rollback();
+        console.error("SQL error:", err);
+        res.status(500).json({ error: "Server error" });
+
+    } finally {
+        connection.release();
+    }
+});
+
+app.get("/questions", (req, res) => {
+    const query = `
+        SELECT * FROM application_questions
+    `;
+
+    db.query(query, [], (err, results) => {
+        if (err) {
+            console.error("SQL error:", err);
+            return res.status(500).json({ error: "Failed to fetch chats" });
+        }
+        res.json(results);
+    });
+});
+
+app.post("/apply", (req, res) => {
+    const { user_id, name, description, event_type, why_us, events_count, events_scale, online_experience, important, personal_website, expected_sales, additional_info
+    } = req.body;
+
+    db.query(
+        `INSERT INTO applications(user_id, name, description, event_type, why_us, events_count, events_scale, online_experience, important, personal_website, expected_sales, additional_info)
+ VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [user_id, name, description, event_type, why_us, events_count, events_scale, online_experience, important, personal_website, expected_sales, additional_info],
+        (err, result) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: "Server error" });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: "User not found" });
+            }
+
+            res.json({ message: "User info updated" });
+        }
+    );
+});
+
+app.put("/responce", (req, res) => {
+    const { id, isConfirmed } = req.body;
+    const newStatus = isConfirmed ? 3 : 2;
+
+    db.query('UPDATE applications SET status = ? WHERE id = ?', [newStatus, id], (err) => {
+        if (err) return res.status(500).json({ error: "DB error" });
+
+        db.query('SELECT * FROM applications WHERE id = ?', [id], (err, results) => {
+            if (err) return res.status(500).json({ error: "DB error" });
+
+            const application = results[0];
+
+            if (isConfirmed) {
+
+                db.query('UPDATE users SET role = ? WHERE id = ?', [3, application.user_id], (err) => {
+                    if (err) return res.status(500).json({ error: "DB error" });
+
+                    db.query(
+                        'INSERT INTO organization(name_ukr, biography_ukr, links, user_id) VALUES(?, ?, ?, ?)',
+                        [application.name, application.description, application.personal_website, application.user_id],
+                        (err) => {
+                            if (err) return res.status(500).json({ error: "DB error" });
+                            res.json({ success: true, application });
+                        }
+                    );
+                    notify(application.user_id, isConfirmed);
+                });
+            } else {
+                res.json({ success: true, application });
+            }
+        });
+    });
+});
+
+app.get("/locations", (req, res) => {
+    const query = "select * from location";
+    db.query(query, [], (err, results) => {
+        if (err) {
+            console.error("SQL error:", err);
+            return res.status(500).json({ error: "Failed to fetch chats" });
+        }
+        res.json(results);
+    });
+});
+
+app.post("/edit_event", async (req, res) => {
+    const { id, title, cover, description, duration, price, type_id, dates, genres } = req.body;
+
+    try {
+        await db.promise().query(
+            `UPDATE tickets SET title=?, cover=?, description=?, duration=?, price=?, type_id=? WHERE id=?`,
+            [title, cover, description, duration, price, type_id, id]
+        );
+
+        await db.promise().query(`DELETE FROM ticket_genre WHERE ticket_id = ?`, [id]);
+        if (genres && genres.length) {
+            for (const g of genres) {
+                if (!g || g === 'null') continue;
+                await db.promise().query(
+                    `INSERT INTO ticket_genre(ticket_id, genre_id) VALUES(?, ?)`,
+                    [id, g]
+                );
+            }
+        }
+
+        await db.promise().query(`DELETE FROM dates WHERE ticket_id = ?`, [id]);
+        if (dates && dates.length) {
+            for (const d of dates) {
+                let locationId = d.location_id;
+
+                if (d.newLocation) {
+                    const [locResult] = await db.promise().query(
+                        `INSERT INTO address(country_id, address_ukr, address_eng) VALUES(?, ?, ?)`,
+                        [d.country_id, d.address_ukr, d.address_eng]
+                    );
+                    locationId = locResult.insertId;
+                }
+
+                await db.promise().query(
+                    `INSERT INTO dates(ticket_id, date, quantity, status, location_id) VALUES(?, ?, ?, 1, ?)`,
+                    [id, d.date, d.quantity, locationId]
+                );
+            }
+        }
+
+        res.json({ message: "Event updated" });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post("/create_event", async (req, res) => {
+    const { title, cover, description, duration, price, type_id, sub_organization, dates, genres } = req.body;
+
+    try {
+        const [ticketResult] = await db.promise().query(
+            `INSERT INTO tickets(title, cover, description, duration, price, type_id) VALUES(?, ?, ?, ?, ?, ?)`,
+            [title, cover, description, duration, price, type_id]
+        );
+        const ticket_id = ticketResult.insertId;
+
+        await db.promise().query(
+            `INSERT INTO sub_authors(ticket_id, sub_organization) VALUES(?, ?)`,
+            [ticket_id, sub_organization]
+        );
+        if (genres && genres.length) {
+            for (const g of genres) {
+                if (!g || g === 'null') continue;
+                await db.promise().query(
+                    `INSERT INTO ticket_genre(ticket_id, genre_id) VALUES(?, ?)`,
+                    [ticket_id, g]
+                );
+            }
+        }
+
+        if (dates && dates.length) {
+            for (const d of dates) {
+                let locationId = d.location_id;
+
+                if (d.newLocation) {
+                    const [locResult] = await db.promise().query(
+                        `INSERT INTO address(country_id, address_ukr, address_eng) VALUES(?, ?, ?)`,
+                        [d.country_id, d.address_ukr, d.address_eng]
+                    );
+                    locationId = locResult.insertId;
+                }
+
+                await db.promise().query(
+                    `INSERT INTO dates(ticket_id, date, quantity, status, location_id) VALUES(?, ?, ?, 1, ?)`,
+                    [ticket_id, d.date, d.quantity, locationId]
+                );
+            }
+        }
+
+        res.json({ message: "Event created", id: ticket_id });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post("/want_delete", async (req, res) => {
     const { user_id } = req.body;
 
     if (!user_id) {
-        return res.status(400).json({ error: "Missing fields" });
+        return res.status(400).json({ error: "User id is required" });
+    }
+    const connection = await db.promise().getConnection();
+    try {
+        const [rows] = await connection.query(
+            'SELECT id FROM organization WHERE user_id = ?',
+            [user_id]
+        );
+
+        if (!rows.length) {
+            return res.status(404).json({ error: "Organization not found" });
+        }
+
+        await connection.query('UPDATE users SET role = 5 WHERE id = ?', [user_id]);
+        await connection.query('INSERT INTO apply_to_delete(organization_id) VALUES(?)', [rows[0].id]);
+        res.json({ message: "Request sent" });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
+    }
+});
+
+app.post("/reject_delete", async (req, res) => {
+    const { id } = req.body;
+
+    if (!id) {
+        return res.status(400).json({
+            error: "Application id is required"
+        });
     }
 
-    db.query(
-        "update users SET isActive = 2 where id = ?",
-        [user_id],
-        (err, result) => {
-            if (err) return res.status(500).json(err);
+    const connection = await db.promise().getConnection();
 
-            res.json({
-                success: true
+    try {
+        const [userRows] = await connection.query(
+            'SELECT organization_id, o.user_id FROM apply_to_delete join organization o ON apply_to_delete.organization_id = o.id WHERE apply_to_delete.id = ?',
+            [id]
+        );
+
+        if (!userRows.length) {
+            return res.status(404).json({
+                error: "Application not found"
             });
         }
-    );
+
+        const organization_id = userRows[0].organization_id;
+        const user_id = userRows[0].user_id;
+
+        await connection.query(
+            'UPDATE users SET role = 3 WHERE id = ?',
+            [user_id]
+        );
+
+        await connection.query(
+            'DELETE FROM apply_to_delete WHERE id = ?',
+            [id]
+        );
+
+        await RejectDeleteRequest(organization_id);
+
+        res.json({
+            message: "Delete request rejected"
+        });
+
+    } catch (err) {
+        console.error(err);
+
+        res.status(500).json({
+            error: err.message
+        });
+
+    } finally {
+        connection.release();
+    }
+});
+
+app.get("/delete_requests", async (req, res) => {
+    const query = `
+        SELECT atd.id, atd.organization_id, o.name_ukr, o.name_eng, u.first_name, u.last_name, u.email, u.phone_number
+        FROM apply_to_delete atd
+        JOIN organization o ON o.id = atd.organization_id
+        JOIN users u ON u.id = o.user_id
+    `;
+    db.query(query, [], (err, results) => {
+        if (err) {
+            console.error("SQL error:", err);
+            return res.status(500).json({ error: "Failed to fetch delete requests" });
+        }
+        res.json(results);
+    });
+});
+
+app.delete("/delete_performer", async (req, res) => {
+    const { id } = req.query;
+    console.log("id:", id);
+    const connection = await db.promise().getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        await connection.query('DELETE FROM apply_to_delete WHERE organization_id = ?', [id]);
+
+        const [rows] = await connection.query(
+            'SELECT d.id as date_id, s_a.ticket_id FROM sub_authors s_a JOIN dates d ON d.ticket_id = s_a.ticket_id WHERE sub_organization = ?',
+            [id]
+        );
+
+        if (rows.length) {
+            const dateIds = rows.map(r => r.date_id);
+
+            const [cartRows] = await connection.query(
+                'SELECT u.email FROM cart c JOIN users u ON c.user_id = u.id WHERE c.ticket_date_id IN (?)',
+                [dateIds]
+            );
+
+            await connection.query('DELETE FROM cart WHERE ticket_date_id IN (?)', [dateIds]);
+
+            await Promise.all(cartRows.map(r =>
+                transporter.sendMail({
+                    from: `"EVENT//ERA" <${process.env.EMAIL_USER}>`,
+                    to: r.email,
+                    subject: `Скасування події`,
+                    html: `<h2>Нам дуже шкода</h2><p>На жаль, подія була скасована.</p>`,
+                })
+            ));
+
+            await connection.query('DELETE FROM dates WHERE id IN (?)', [dateIds]);
+        }
+
+        const ticketIds = [...new Set(rows.map(r => r.ticket_id))];
+
+        if (ticketIds.length) {
+            await connection.query('DELETE FROM ticket_genre WHERE ticket_id IN (?)', [ticketIds]);
+            await connection.query('DELETE FROM sub_authors WHERE sub_organization = ?', [id]);
+            await connection.query('DELETE FROM tickets WHERE id IN (?)', [ticketIds]);
+        }
+
+        const [userRows] = await connection.query(
+            'SELECT user_id FROM organization WHERE id = ?', [id]
+        );
+        const user_id = userRows[0]?.user_id;
+
+        await connection.query('DELETE FROM organization WHERE id = ?', [id]);
+
+        if (user_id) {
+            await connection.query('UPDATE users SET role = 1 WHERE id = ?', [user_id]);
+        }
+
+        await connection.commit();
+        res.json({ message: "Performer deleted" });
+
+    } catch (err) {
+        await connection.rollback();
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
+    }
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -769,6 +1306,5 @@ if (process.env.NODE_ENV === 'production') {
         res.sendFile(path.join(__dirname, '../ticketstore/dist/index.html'));
     });
 }
-
 
 app.listen(5000, () => console.log("Server running on port 5000"));

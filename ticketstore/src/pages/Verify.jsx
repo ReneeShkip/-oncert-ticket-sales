@@ -4,7 +4,7 @@ export default function Verify() {
             <h1>Підтвердження</h1>
             <div>
                 <p>
-                    Ця сторінка підтверджує, що користувач {user.first_name} {user.last_name} має справжній квиток на подію {event.ukr.title}
+                    Ця сторінка підтверджує, що користувач {user.first_name} {user.last_name} має справжній квиток на подію {event.title}
                 </p>
             </div>
         </div>

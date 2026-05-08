@@ -1,0 +1,39 @@
+export const normalizedApplications = (rows, questions) => {
+    if (!rows?.length) return [];
+
+    const appliersMap = new Map();
+
+    rows.forEach(r => {
+        if (!appliersMap.has(r.status_the_status_id)) {
+            appliersMap.set(r.status_the_status_id, {
+                status_id: r.status_the_status_id,
+                ukr: r.status_ukr,
+                eng: r.status_eng,
+                applications: [],
+            });
+        }
+
+        const status = appliersMap.get(r.status);
+        if (r.id && !status.applications.some(a => a.id === r.id)) {
+            status.applications.push({
+                id: r.id,
+                user: {
+                    id: r.user_id,
+                    name: r.first_name + " " + r.last_name,
+                    email: r.email,
+                    phone: r.phone_number
+                },
+                date_apply: r.date_apply,
+                fields: questions.map(q => ({
+                    apply_id: r.apply_id,
+                    question_ukr: q.title_ukr,
+                    question_eng: q.title_eng,
+                    type: q.type,
+                    answer: r[q.point]
+                }))
+            });
+        }
+    });
+
+    return [...appliersMap.values()];
+};

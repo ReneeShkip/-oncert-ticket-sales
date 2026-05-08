@@ -49,7 +49,7 @@ h2 {
 }
 
 .author_section:hover {
-    box-shadow: 0 0 7px #254c69cc;
+    box-shadow: 0 0 7px #3E5D93cc;
     background-color: #3E5D933c;
 
     .photo .overlay {
@@ -62,7 +62,7 @@ h2 {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    margin: 50px 0;
+    margin: 20px 0;
     background-color: #F4ADBD;
     border-radius: 20px;
 }
@@ -71,4 +71,6 @@ h2 {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: space-evenly;
+    flex: 1;
 }

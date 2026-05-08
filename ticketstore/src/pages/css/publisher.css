@@ -1,9 +1,9 @@
 main {
     display: flex;
-    justify-content: center;
-    flex: 1;
     flex-direction: column;
     justify-content: space-between;
+    padding-bottom: 20px;
+    flex: 1;
 }
 
 h2 {
@@ -19,6 +19,10 @@ h2 {
     height: 150px;
 }
 
+.sub_info_text {
+    font-size: 18px;
+}
+
 .logotype img {
     width: 100%;
     object-fit: cover;
@@ -32,7 +36,7 @@ h2 {
 
 .logotype:hover {
     opacity: 1;
-    box-shadow: 0 0 7px #254c69cc;
+    box-shadow: 0 0 7px #3E5D93cc;
     background-color: #3E5D933c;
     border-radius: 30px;
     font-size: 10px;
@@ -56,4 +60,18 @@ h2 {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: space-evenly;
+    flex: 1;
+
+    .noticers {
+        align-items: flex-start;
+    }
+
+    .search-wrapper {
+        width: 90%;
+    }
+
+    .search-box.open {
+        width: 30%;
+    }
 }

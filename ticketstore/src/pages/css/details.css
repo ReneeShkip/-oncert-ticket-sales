@@ -12,10 +12,6 @@
     }
 }
 
-.link {
-    width: auto !important;
-}
-
 .book-container {
     display: flex;
     justify-content: center;
@@ -61,6 +57,7 @@
     font-family: 'MyFont';
     font-size: 22px;
     padding: 10px;
+    transition: 0.5s;
 }
 
 .zakl {
@@ -69,8 +66,7 @@
 }
 
 .buying:hover {
-    background: #F4ADBD;
-    color: #6C0820;
+    background: #8d253e;
 }
 
 .buying:disabled,
@@ -94,7 +90,7 @@
 }
 
 h1 {
-    margin: 0;
+    margin: 10px;
     color: #6C0820;
     font-size: 30px;
 }
@@ -116,16 +112,69 @@ p {
 }
 
 .au_short_info {
+    width: 220px;
+    height: 190px;
+    font-size: 16px;
+    font-family: '';
+    color: #fff;
+    border-radius: 2vh;
     display: flex;
     gap: 10%;
     color: black;
-}
+    align-items: center;
+    flex-direction: column;
+    justify-content: space-evenly;
 
+    img {
+        width: 90%;
+        border-radius: 2vh;
+    }
+
+    .no_p {
+        font-size: 18px;
+        background: none;
+        margin: 0;
+        padding: 0 15px;
+        text-align: center;
+        text-indent: 0;
+        color: #fff;
+    }
+}
 
 .listbook {
     flex-direction: column;
     width: 100%;
     padding: 0;
+
+    .au_short_info {
+        background: linear-gradient(to right, #6C0820 0%, #8d253e 35%, #8d253e 50%, #8d253e 65%, #6C0820 100%);
+        height: 180px;
+        overflow: hidden;
+
+        .img_container {
+            width: 90%;
+            height: 68%;
+            overflow: hidden;
+            border-radius: 2vh;
+            transition: 0.5s;
+        }
+
+        img {
+            width: 100%;
+        }
+    }
+
+    .au_short_info:hover {
+        .img_container {
+            width: 90%;
+            height: 72%;
+            overlay: none;
+        }
+
+        img {
+            width: 100%;
+        }
+    }
 }
 
 .books {
@@ -135,18 +184,15 @@ p {
     z-index: 10;
 
     h2 {
-        font-size: 30px;
-        margin: 0;
+        font-size: 25px;
+        margin: 0 0 7px 0;
         color: #6C0820;
+        text-align: center;
     }
 
     a {
         width: 100%;
         justify-content: space-between;
-    }
-
-    a:hover {
-        border-bottom: 1px #254C69 solid;
     }
 }
 
@@ -185,6 +231,18 @@ p {
     padding: 0;
     width: 100%;
     justify-content: space-evenly;
+
+    li,
+    li:hover {
+        transform: translateY(0px);
+        background-color: #3e5d9320;
+        border-radius: 12px;
+    }
+
+    .buttonBook,
+    .buttonBook:hover {
+        background: none;
+    }
 }
 
 .hidden_checkbox {
@@ -198,7 +256,7 @@ p {
     user-select: none;
     display: inline-block;
     background-color: #5b86cb81;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.241);
+    box-shadow: 0 0 15px #0000003d;
     border: 2px solid #5B86CB;
     display: flex;
     flex-direction: column;
@@ -206,7 +264,7 @@ p {
     font-family: ' ';
 
     h3 {
-        font-size: 30px;
+        font-size: 22px;
     }
 
     h5 {
@@ -231,6 +289,8 @@ p {
 
 .link {
     height: 100%;
+    width: auto !important;
+    background: none;
 }
 
 .link_container {
@@ -241,7 +301,7 @@ p {
 
 .type_item {
     font-size: 20px;
-    transition: transform 0.3s ease;
+    transition: 0.3s;
 }
 
 .underbtn {
@@ -323,7 +383,7 @@ p {
     }
 
     .au_short_info {
-        color: #254C69;
+        color: #3E5D93;
         z-index: 3;
 
         margin-top: 10px;
@@ -483,6 +543,7 @@ li:hover {
 .soc {
     font-size: 26px;
     display: flex;
-    width: 50%;
-    justify-content: space-between
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 5px;
 }

@@ -43,7 +43,6 @@ function generateCalendar(year, month) {
     return calendar;
 }
 
-
 export default function Catalog() {
     const { events, loading, error } = useEvents();
     const { lang, theme } = useContext(MoreContext);
@@ -53,6 +52,22 @@ export default function Catalog() {
         types: [],
         country: []
     });
+
+    const [searchRes, setSearchRes] = useState([]);
+
+    const applySearch = () => {
+        const result = events.filter(s => {
+            const searchLower = searchText.toLowerCase();
+            const match = s.title.toLowerCase().includes(searchLower) ||
+                s.description.toLowerCase().includes(searchLower) ||
+                s.genres.some(g => {
+                    return g?.[lang]?.toLowerCase().includes(searchLower);
+                });
+            return match;
+        });
+        setSearchRes(result);
+        console.log("Search applied. Results:", result);
+    };
 
     const filteredEvents = useMemo(() => {
         let result = [...events];
@@ -65,18 +80,31 @@ export default function Catalog() {
 
         if (filters.types.length > 0) {
             result = result.filter(e =>
-                e.organizations.some(o => filters.types.includes(o.type_id))
+                filters.types.includes(e.type_id)
             );
         }
 
         if (filters.country.length > 0) {
-            result = result.filter(e =>
-                e.tickets.some(o => filters.country.includes(o.location.country_id))
-            );
+            result = result
+                .map(e => {
+                    const filteredTickets = e.tickets.filter(t =>
+                        filters.country.includes(t.location.country_id)
+                    );
+
+                    return {
+                        ...e,
+                        tickets: filteredTickets
+                    };
+                })
+                .filter(e => e.tickets.length > 0);
+        }
+
+        if (searchRes.length > 0) {
+            result = result.filter(e => searchRes.some(s => s.id === e.id));
         }
 
         return result;
-    }, [events, filters]);
+    }, [events, filters, searchRes]);
 
     const [filterOpen, setFilterOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
@@ -86,9 +114,7 @@ export default function Catalog() {
     const searchToggleRef = useRef(null);
     const searchInputRef = useRef(null);
 
-    function applySearch() {
-        navigate("/books/searched", { state: { searchText } });
-    }
+
 
     useEffect(() => {
         if (!searchOpen) return;
@@ -162,63 +188,10 @@ export default function Catalog() {
             }).format(new Date(year, month))
         },
     }
-
+    console.log("searchRes:", searchRes, "length:", searchRes.length);
     return (
-        <div className="catalog_container">
-            <div className="noticers">
-                <div className="search-wrapper">
-                    <div
-                        ref={searchBoxRef}
-                        className={`search-box ${searchOpen ? "open" : ""}`}
-                    >
-                        <input
-                            className="inputs"
-                            type="text"
-                            placeholder="Пошук..."
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                        />
-                        <button
-                            className="close-search"
-                            onClick={() => {
-                                setSearchText("");
-                                setSearchRes([]);
-                                setSearchOpen(false);
-                            }}
-                        >
-                            &times;
-                        </button>
-
-                    </div>
-                    <button
-                        ref={searchToggleRef}
-                        className="search-toggle"
-                        onClick={() => { !searchOpen ? setSearchOpen(true) : applySearch() }}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                applySearch();
-                            }
-                        }}
-                    >
-                        <img src={`/svg/search_${theme}.svg`} alt="search" />
-                    </button>
-                </div>
-                <button
-                    className="filter-toggle"
-                    onClick={() => setFilterOpen(prev => !prev)}
-                >
-                    <img src={`/svg/filters_${theme}.svg`} alt="filter" />
-
-
-                    {filterOpen && (
-                        <Subfilters onClose={() => setFilterOpen(false)}
-                            filters={filters}
-                            setFilters={setFilters} />
-                    )}
-                </button>
-
-            </div>
-            <div className="catalog_page">
+        <div className="cataloger-contain">
+            <div className="catalog_container">
                 <div className="calendar">
                     <div className="calendar-header">
                         <button className="prev-next" onClick={() => {
@@ -267,26 +240,93 @@ export default function Catalog() {
                         })}
                     </div>
                 </div >
-                <div className="events">
-                    {info.length > 0 ? (
-                        info.map((event, idx) => {
-                            return (
-                                <NavLink to={`/event/details/${event.id}`} className="more_info">
-                                    <img className="bg-blur info_bg" src={`img/covers/${event.cover}`} alt={event?.[lang]?.title} />
-                                    <div key={idx} className="event_info">
-                                        <div className="event_info_text">
-                                            <h2>{event?.[lang]?.title || "Без назви"}</h2>
-                                        </div>
-                                        <img src={`img/covers/${event.cover}`} alt={event?.[lang]?.title} className="event_cover" />
-                                    </div>
-                                </NavLink>
-                            );
-                        })
-                    ) : (
-                        <div className="event_info">
-                            <p>{translator?.[lang]?.info_prev}</p>
+                <div style={{ width: "55%", height: "100%" }}>
+                    <div className="noticers">
+                        <div className="search-wrapper">
+                            <div
+                                ref={searchBoxRef}
+                                className={`search-box ${searchOpen ? "open" : ""}`}
+                            >
+                                <input
+                                    className="inputs"
+                                    type="text"
+                                    placeholder="Пошук..."
+                                    value={searchText}
+                                    onChange={(e) => setSearchText(e.target.value)}
+                                />
+                                <button
+                                    className="close-search"
+                                    onClick={() => {
+                                        setSearchText("");
+                                        setSearchRes([]);
+                                        setSearchOpen(false);
+                                    }}
+                                >
+                                    &times;
+                                </button>
+
+                            </div>
+                            <div>
+                                <button
+                                    ref={searchToggleRef}
+                                    className="search-toggle"
+                                    onClick={() => { !searchOpen ? setSearchOpen(true) : applySearch() }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            applySearch();
+                                        }
+                                    }}
+                                >
+                                    <img src={`/svg/search_${theme}.svg`} alt="search" />
+                                </button>
+                            </div>
+                            <button
+                                className="filter-toggle"
+                                onClick={() => setFilterOpen(prev => !prev)}
+                            >
+                                <img src={`/svg/filters_${theme}.svg`} alt="filter" />
+                            </button>
                         </div>
-                    )}
+                        {filterOpen ? (
+                            <Subfilters
+                                onClose={() => setFilterOpen(false)}
+                                filters={filters}
+                                setFilters={setFilters}
+                            />
+                        ) : (
+                            <div
+                                className="filter-popup"
+                                style={{
+                                    visibility: "hidden",
+                                    pointerEvents: "none"
+                                }}
+                            ></div>
+                        )}
+
+                    </div>
+                    <div className="catalog_page">
+                        <div className="events">
+                            {info.length > 0 ? (
+                                info.map((event, idx) => {
+                                    return (
+                                        <NavLink to={`/event/details/${event.id}`} className="more_info" key={event.id}>
+                                            <img className="bg-blur info_bg" src={`img/covers/${event.cover}`} alt={event?.title} />
+                                            <div key={idx} className="event_info">
+                                                <div className="event_info_text">
+                                                    <h2>{event?.title || "Без назви"}</h2>
+                                                </div>
+                                                <img src={`img/covers/${event.cover}`} alt={event?.title} className="event_cover" />
+                                            </div>
+                                        </NavLink>
+                                    );
+                                })
+                            ) : (
+                                <div className="event_info">
+                                    <p>{translator?.[lang]?.info_prev}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

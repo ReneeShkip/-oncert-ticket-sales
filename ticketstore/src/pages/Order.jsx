@@ -3,10 +3,11 @@ import { useLocation, useNavigate, NavLink } from "react-router-dom";
 import { UserContext } from "../context/UserContext";
 import Loading from "./Loading"
 import { CartContext } from "../context/CartContext";
-//import CitySelector from "../components/City_selector";
 import { MoreContext } from "../context/MoreContext";
 import Alert from "../components/Alert";
 import { useEmail } from "../utils/SendMail"
+import { usePerformers } from "../context/AuthorContext";
+import { formatDate } from "../utils/formatDate";
 
 export default function Order() {
     const navigate = useNavigate();
@@ -26,17 +27,19 @@ export default function Order() {
     const [theText, setText] = useState("");
     const [showAlert, setShowAlert] = useState(false);
     const user_id = user?.id;
-
+    const { authors } = usePerformers();
     const translator = {
         ukr: {
             currency: "грн",
             due: "До сплати",
-            cancel: "Скасувати"
+            cancel: "Скасувати",
+            nothing: "Немає товарів для оформлення"
         },
         eng: {
             currency: "uah",
             due: "Total to pay",
-            cancel: "Cancel"
+            cancel: "Cancel",
+            nothing: "There are no products to list"
         }
     }
 
@@ -50,32 +53,6 @@ export default function Order() {
         setChosen(chosen.filter(item => item.id !== id))
     }
 
-    const order = async () => {
-        const cart_ids = chosen.map(item => item.tickets.map(t => t.cart_id));
-        try {
-            const res = await fetch("http://localhost:5000/make_order", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    cart_ids,
-                    user_id
-                })
-            });
-
-            if (!res.ok) throw new Error("Помилка завантаження");
-
-            const data = await res.json();
-            if (data.success) {
-                sendEmail({ user, order: chosen })
-                navigate("/returner");
-                await fetchCart();
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    const { sendEmail } = useEmail();
     useEffect(() => {
         if (user) {
             setFirstName(user.first_name);
@@ -86,74 +63,96 @@ export default function Order() {
         setLoading(false);
     }, [user]);
 
-    console.log("chosen", chosen);
     const total = chosen.reduce((acc, item) => {
-        const itemCount = item.tickets.reduce((sum, t) => sum + t.quantity, 0);
+        if (!item) return acc;
 
-        acc.totalSum += Number(item.price) * itemCount;
-        acc.totalCount += itemCount;
+        const quantity = item.tickets
+            ? item.tickets.reduce((sum, t) => sum + t.quantity, 0)
+            : item.quantity ?? 0;
 
+        acc.totalSum += Number(item.price ?? 0) * quantity;
+        acc.totalCount += quantity;
         return acc;
     }, { totalSum: 0, totalCount: 0 });
+
     if (chosen.length === 0) {
-        return <h2>Немає товарів для оформлення</h2>;
+        return (
+            <div className="order-page-container">
+                <div className="order-page">
+                    <div className="alternative">
+                        <h2>{translator?.[lang].nothing}</h2>
+                    </div>
+                </div>
+            </div>
+        );
     }
-
+    console.log("chosen", chosen);
+    const names = chosen.map(ch => ch.title).join(', ');
     return (
-        <div className="order-page">
-            {showAlert && <Alert
-                text={theText}
-                onConfirm={order}
-                onCancel={cancel}
-            />}
-            <div className="info">
-                <h1>Контактні дані</h1>
-                <div className="profile_info">
-                    <div className="prof">Ім'я<input key="info_name" value={first_name} onChange={e => setFirstName(e.target.value)} /></div>
-                    <div className="prof">Прізвище<input key="info_last_name" value={last_name} onChange={e => setLastName(e.target.value)} /></div>
-                    <div className="prof">Телефон<input key="info_phone" value={phone_number} onChange={e => setPhone(e.target.value)} /></div>
-                    <div className="prof">Ел.Пошта<input key="info_phone" value={email} onChange={e => setEmail(e.target.value)} /></div>
-                </div>
-                <div className="profile_info checkout">
-                    <div className="total-price">
-                        <h2>{translator?.[lang].due}</h2>
-                        <h2>{total.totalSum} {translator?.[lang].currency}</h2>
+        <div className="order-page-container">
+            <div className="order-page">
+                {showAlert && <Alert
+                    text={theText}
+                    onConfirm={order}
+                    onCancel={cancel}
+                />}
+                <div className="info">
+                    <h1>Контактні дані</h1>
+                    <div className="profile_info">
+                        <div className="prof">Ім'я<input key="info_name" value={first_name} onChange={e => setFirstName(e.target.value)} /></div>
+                        <div className="prof">Прізвище<input key="info_last_name" value={last_name} onChange={e => setLastName(e.target.value)} /></div>
+                        <div className="prof">Телефон<input key="info_phone" value={phone_number} onChange={e => setPhone(e.target.value)} /></div>
+                        <div className="prof">Ел.Пошта<input key="info_phone" value={email} onChange={e => setEmail(e.target.value)} /></div>
                     </div>
-                    <div className="total-price">
-                        <NavLink to="/cart">Скасувати</NavLink>
-                        <button className="roder" onClick={() => {
-                            setText("Підтвердіть оформлення замовлення")
-                            setShowAlert(true)
-                        }
-                        }>Оформити замовлення</button>
-                    </div>
-                </div>
-            </div>
-            <div style={{ width: "30%" }}>
-                {chosen.map(ch => (
-                    <div className="book_card" key={`book_${ch.id}`}>
-                        <div key={`book_${ch.title}`} className="books-section">
-                            <h2>{ch.title}</h2>
-                            <div className="sub_book_info">
-                                <img src={`img/covers/${ch.cover}`} alt={ch.title} className="cover" />
-                                <div>
-                                    <h4 style={{ fontSize: "28px", color: "#254C69" }}>{ch.first_name} {ch.last_name}</h4>
-                                    <h4>Тип: {ch.type}</h4>
-                                    <h4>Ціна: {ch.price * ch.quantity}</h4>
-                                    <h4>Кількість: {ch.quantity}</h4>
-                                </div>
-                            </div>
-
+                    <div className="profile_info checkout">
+                        <div className="total-price">
+                            <h2>{translator?.[lang].due}</h2>
+                            <h2>{total.totalSum} {translator?.[lang].currency}</h2>
                         </div>
-                        <button
-                            onClick={() => removeItem(ch.id)}
-                            className="remove-btn"
-                        >
-                            <img src="/svg/close.svg" alt="delete" />
-                        </button>
+                        <div className="total-price">
+                            <NavLink to="/cart">Скасувати</NavLink>
+                            <button className="roder" style={{ "color": "#fff" }} onClick={() => navigate(`/payment?name=${names}&price=${total.totalSum}`, {
+                                state: { user, order: chosen }
+                            })}>
+                                Купити
+                            </button>
+                        </div>
                     </div>
-                ))}
-            </div>
-        </div >
+                </div>
+                <div style={{ width: "30%" }}>
+                    {chosen.map(ch => (
+                        <div className="book_card" key={`book_${ch.id}`}>
+                            <div key={`book_${ch.title}`} className="books-section">
+                                <h2>{ch.title}</h2>
+                                <div className="sub_book_info">
+                                    <div>
+                                        <h3 style={{ "borderBottom": "1px solid #fff" }}>{authors
+                                            .filter(a => a.events.some(e => e.id === ch.id))
+                                            .map(a => a.ukr.name)
+                                            .join(", ")}</h3>
+                                        <div style={{ "borderBottom": "1px solid #fff", "marginTop": "10px" }}>
+                                            <h3 className="sub_info_text">Ціна за 1: {ch.price}</h3>
+                                            {ch.tickets.map(t =>
+                                                <div>
+                                                    <h3 className="sub_info_text">Дата: {formatDate(t.date, lang)}</h3>
+                                                    <h3 className="sub_info_text">Кількість: {t.quantity}</h3>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <button
+                                onClick={() => removeItem(ch.id)}
+                                className="remove-btn"
+                            >
+                                <img src="/svg/close.svg" alt="delete" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div >
+        </div>
     )
 }

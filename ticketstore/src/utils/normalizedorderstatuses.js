@@ -1,39 +1,46 @@
-export const normalizedOStatuses = (rows) => {
-    if (!rows || rows.length === 0) return [];
+export const normalizeOrderStatuses = (rows) => {
+    if (!rows?.length) return [];
 
-    const users = {};
+    const usersMap = new Map();
 
     rows.forEach(r => {
-        if (!users[r.user_id]) {
-            users[r.user_id] = {
+        if (!usersMap.has(r.user_id)) {
+            usersMap.set(r.user_id, {
                 id: r.user_id,
-                userer: r.userer,
-                isActive: r.isActive,
-                orders: {}
-            };
+                firstName: r.first_name,
+                lastName: r.last_name,
+                phone_number: r.phone_number,
+                role: r.role,
+                email: r.email,
+                orders: new Map()
+            });
         }
 
-        if (!users[r.user_id].orders[r.id]) {
-            users[r.user_id].orders[r.id] = {
-                id: r.id,
-                status: r.status,
+        const user = usersMap.get(r.user_id);
+
+        if (r.order_id && !user.orders.has(r.order_id)) {
+            user.orders.set(r.order_id, {
+                id: r.order_id,
                 date: r.date_and_time,
-                books: []
-            };
+                cart: []
+            });
         }
 
-        users[r.user_id].orders[r.id].books.push({
-            book_id: r.cart_id,
-            title: r.title,
-            author: r.author,
-            price: r.price * r.quantity,
-            type: r.type,
-            quantity: r.quantity
-        });
+        if (r.order_id && r.cart_id) {
+            const order = user.orders.get(r.order_id);
+            if (!order.cart.some(c => c.id === r.cart_id)) {
+                order.cart.push({
+                    id: r.cart_id,
+                    ticket_date_id: r.ticket_date_id,
+                    quantity: r.quantity,
+                    reserved_until: r.reserved_until
+                });
+            }
+        }
     });
 
-    return Object.values(users).map(user => ({
+    return [...usersMap.values()].map(user => ({
         ...user,
-        orders: Object.values(user.orders)
+        orders: [...user.orders.values()]
     }));
 };

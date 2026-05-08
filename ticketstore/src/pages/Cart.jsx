@@ -54,6 +54,17 @@ function Cart() {
         setShowAlert(false);
     };
 
+    const translator = {
+        ukr: {
+            cart: "Кошик пустий",
+            auth: "Ви не авторизовані",
+        },
+        eng: {
+            cart: "Cart is empty",
+            auth: "You are not authorized"
+        }
+    }
+
     const confirmDeleteAll = () => {
         removeAll();
         setShowAlert(false);
@@ -88,20 +99,22 @@ function Cart() {
             {!isAuth ? (
                 <div className="alternative">
                     <img src="/svg/notAuth.svg" alt="not-auth" />
-                    <h2>Ви не авторизовані</h2>
+                    <h2>{translator?.[lang].auth}</h2>
                 </div>
             ) : (
                 <div className="alternative">
-                    <img src="/svg/emptyCart.svg" alt="cart-empty" />
-                    <h2>Кошик пустий</h2>
+                    <img src={`/svg/emptyCart_${theme}.svg`} alt="cart-empty" />
+                    <h2>{translator?.[lang].cart}</h2>
                 </div>
             )}
         </div>
     );
 
     const total = chosen.reduce((acc, item) => {
-        acc.totalSum += Number(item.price) * item.quantity;
-        acc.totalCount += Number(item.quantity);
+        const tickets = item.tickets ?? [];
+        const itemCount = tickets.reduce((sum, t) => sum + Number(t.quantity), 0);
+        acc.totalSum += Number(item.price) * itemCount;
+        acc.totalCount += itemCount;
         return acc;
     }, { totalSum: 0, totalCount: 0 });
     return (
@@ -123,7 +136,7 @@ function Cart() {
                                 checked={cart.length > 0 && chosen.length === cart.length}
                                 onChange={e => {
                                     if (e.target.checked) {
-                                        setChosen(cart);
+                                        setChosen(yourEvents);
                                     } else {
                                         setChosen([]);
                                     }
@@ -162,63 +175,62 @@ function Cart() {
                                         }}
                                     />
                                     <div className="checkbox_button">
-                                        <div className="main-info">
-                                            <img
-                                                src={`/img/covers/${item.cover}`}
-                                                alt={item?.[lang].title}
-                                                className={`book-cover ${item.type}`}
-                                            />
-                                            <div className="info-cart">
-                                                <NavLink to={`/book/details/${item.id}`} className="navlink">
-                                                    <div>{item?.[lang].title}</div>
-                                                </NavLink>
-                                                <div className="sub_info">
-                                                    {item.first_name} {item.last_name}
+                                        <div className="container_checkbox">
+                                            <div className="main-info">
+                                                <div className="info-cart">
+                                                    <NavLink to={`/book/details/${item.id}`} className="navlink">
+                                                        <div>{item?.title}</div>
+                                                    </NavLink>
+                                                    <div className="sub_info">
+                                                        {item.first_name} {item.last_name}
+                                                    </div>
                                                 </div>
+                                                <div className="quantity-wrapper">{item.type}</div>
                                             </div>
-                                            <div className="quantity-wrapper">{item.type}</div>
                                         </div>
-                                        {item.tickets.map(t =>
-                                            <div>
-                                                <div className="quantity-wrapper">
-                                                    <input
-                                                        type="number"
-                                                        className="quant"
-                                                        min={1}
-                                                        value={t.quantity}
-                                                        onChange={e => {
-                                                            const value = Math.max(1, Number(e.target.value));
+                                        <div>
+                                            {item.tickets.map(t =>
+                                                <div className="container_checkbox">
+                                                    <div className="quantity-wrapper">
+                                                        <input
+                                                            type="number"
+                                                            className="quant"
+                                                            min={1}
+                                                            value={t.quantity}
+                                                            onChange={e => {
+                                                                const value = Math.max(1, Number(e.target.value));
 
-                                                            setCart(prev =>
-                                                                prev.map(i =>
-                                                                    i.ticket_date_id === t.date_id
-                                                                        ? { ...i, quantity: value }
-                                                                        : i
-                                                                )
-                                                            );
-                                                        }}
-                                                        onBlur={() => {
-                                                            updateQuantity(item.id, t.quantity);
-                                                        }}
-                                                    /> шт
-                                                </div>
+                                                                setCart(prev =>
+                                                                    prev.map(i =>
+                                                                        i.ticket_date_id === t.date_id
+                                                                            ? { ...i, quantity: value }
+                                                                            : i
+                                                                    )
+                                                                );
+                                                            }}
+                                                            onBlur={() => {
+                                                                updateQuantity(item.id, t.quantity);
+                                                            }}
+                                                        /> шт
+                                                    </div>
 
-                                                <div className="info-cart price">
-                                                    {item.price * t.quantity} грн
+                                                    <div className="info-cart price">
+                                                        {item.price * t.quantity} грн
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setText(`Ви впевнені, що хочете видалити книгу зі свого кошику?`)
+                                                            setShowAlert(true)
+                                                            setOne(true)
+                                                            setItemToDelete(t.cart_id)
+                                                        }}
+                                                        className="remove-btn"
+                                                    >
+                                                        <img src="/svg/close.svg" alt="delete" />
+                                                    </button>
                                                 </div>
-                                            </div>
-                                        )}
-                                        <button
-                                            onClick={() => {
-                                                setText(`Ви впевнені, що хочете видалити книгу зі свого кошику?`)
-                                                setShowAlert(true)
-                                                setOne(true)
-                                                setItemToDelete(item.id)
-                                            }}
-                                            className="remove-btn"
-                                        >
-                                            <img src="/svg/close.svg" alt="delete" />
-                                        </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                 </label>

@@ -38,10 +38,12 @@ export default function Header() {
     const translator = {
         subheaders: {
             ukr: {
+                language: "Укр",
                 Events: "Події",
                 Organizations: "Виконавці"
             },
             eng: {
+                language: "Eng",
                 Events: "Events",
                 Organizations: "Performers"
             }
@@ -122,11 +124,11 @@ export default function Header() {
                 )}
 
                 <button onClick={changeLang} className="but_lang">
-                    {lang}
+                    {translator.subheaders?.[lang].language}
                 </button>
 
                 <button onClick={changeTheme} className="but_lang">
-                    <img src={`svg/${theme}.svg`}></img>
+                    <img src={`/svg/${theme}.svg`}></img>
                 </button>
 
                 <button>
@@ -146,7 +148,7 @@ export default function Header() {
                     onClick={toggleMenu}
                 >
                     {isAuth ? (
-                        <img src="/img/users/admin.svg" alt="admin" />
+                        <img src={`/img/users/${user.role}.svg`} alt="admin" />
                     ) : (
                         <img src="/svg/profile.svg" alt="profile" />
                     )}

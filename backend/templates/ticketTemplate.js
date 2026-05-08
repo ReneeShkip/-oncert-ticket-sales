@@ -31,7 +31,7 @@ function buildTicketHTML(user, event, ticket, qrDataUrl) {
     <body>
       <div class="ticket">
         <div class="header">
-          <h1>${event.ukr.title}</h1>
+          <h1>${event.title}</h1>
           <div class="orgs">
            ${event.eventAuthors?.map(a => `<h5>${a.ukr?.name}</h5>`).join(' · ') || ''}
           </div>

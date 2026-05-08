@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useCallback } from "react";
 
 export const UserContext = createContext(null);
 
@@ -48,7 +48,6 @@ export function UserProvider({ children }) {
                 last_name: data.last_name,
                 phone_number: data.phone_number,
                 role: data.role,
-                city: data.city,
                 email: data.email
             };
 
@@ -76,7 +75,7 @@ export function UserProvider({ children }) {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || "Невірна пошта або пароль");
+                throw new Error(data.error);
             }
 
             setUser(data);

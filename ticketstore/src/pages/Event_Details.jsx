@@ -1,5 +1,5 @@
 import { useParams, NavLink, useNavigate } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
 import "../pages/css/details.css";
 import Alert from "../components/Alert";
 import { useContext } from "react";
@@ -12,7 +12,7 @@ import { usePerformers } from "../context/AuthorContext";
 import Loading from "./Loading";
 
 export default function EventDetails() {
-    const { events, loading, error } = useEvents();
+    const { events, loading, error, refetch } = useEvents();
     const { user } = useContext(UserContext);
     const { id } = useParams();
     const { lang, theme } = useContext(MoreContext);
@@ -29,21 +29,29 @@ export default function EventDetails() {
     const translator = {
         ukr: {
             check: "Забронювати",
+            cancel: "Скасувати подію",
             currency: "грн",
             more: "більше",
             less: "менше",
             modalText: "Ви не обрали дату події",
             modalSecondText: "Ви не авторизовані на сайті",
-            afterBook: "Ви забронювали квиток! До його оплати у вас 15 хвилин, після чого бронювання буде скасовано"
+            afterBook: "Ви забронювали квиток! До його оплати у вас 15 хвилин, після чого бронювання буде скасовано",
+            cancelStatus: "Скасовано",
+            endStatus: "Завершено",
+            chooser: "Оберіть дату"
         },
         eng: {
             check: "Reserve",
+            cancel: "Cancel event",
             currency: "uah",
             more: "more",
             less: "less",
             modalText: "You`ve not selected an event date",
             modalSecondText: "You are not logged in to the site",
-            afterBook: "You`ve booked a ticket! You have 15 minutes to pay for it, after which the reservation will be canceled."
+            afterBook: "You`ve booked a ticket! You have 15 minutes to pay for it, after which the reservation will be canceled.",
+            cancelStatus: "Canceled",
+            endStatus: "Completed",
+            chooser: "Choose a date"
         }
     }
 
@@ -63,7 +71,16 @@ export default function EventDetails() {
         addToCart(dateId, 1);
     };
 
-
+    const handleCancelEvent = () => {
+        fetch("http://localhost:5000/cancel_event", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ticket_date_id: dateId, event: event })
+        })
+            .then(res => res.json())
+            .then(() => refetch(dateId))
+            .catch(err => console.error("error:", err));
+    };
 
     function TextMore({ text }) {
         const [expanded, setExpanded] = useState(false);
@@ -92,7 +109,7 @@ export default function EventDetails() {
     const cancel = () => {
         setShowAlert(false);
     };
-    //console.log(event);
+    console.log(event);
     return (
         <div className="author-details">
             {showAlert && <Alert
@@ -128,41 +145,53 @@ export default function EventDetails() {
             </div>
             <div className="genres_list">
                 {event.genres.map(g =>
-                    <div className="one_genre" key={g.id}>
+                    <div className="one_genre" key={`g_${g.id}`}>
                         {g?.[lang]}
                     </div>
                 )}
             </div>
             <ul className="types">
                 <li key="buttonBook" className="buttonBook">
-                    <button
-                        className="buying"
-                        disabled={!event.tickets.some(t => t.quantity > 0)}
-                        onClick={handleAddToCart}
-                    >{translator?.[lang].check} <div>{event.price} {translator?.[lang].currency}</div></button>
-                    {<div className="underbtn">{!dateId && "Оберіть дату"}</div>
+                    {user?.role === "admin" ?
+                        <button
+                            className="buying"
+                            onClick={handleCancelEvent}
+                        >{translator?.[lang].cancel}</button>
+                        :
+                        <button
+                            className="buying"
+                            disabled={!event}
+                            onClick={handleAddToCart}
+                        >{translator?.[lang].check} <div>{event.price} {translator?.[lang].currency}</div></button>
+                    }
+                    {<div className="underbtn">{!dateId && translator?.[lang].chooser}</div>
                     }
                 </li>
                 {
                     event.tickets.map((t) => (
-                        <li key={t.date_id} className="type_item">
+                        <li key={`ticket_date_${t.date_id}`} className="type_item">
                             <label>
                                 <input
                                     name="type"
                                     type="radio"
                                     value={t.type_id}
                                     className="hidden_checkbox"
-                                    disabled={t.quantity < 1}
+                                    disabled={t.quantity < 1 || t.status == "Скасовано" || t.status == "Завершено"}
                                     onChange={() => setDateId(t.date_id)}
                                 />
                                 <div className="checkbox_button">
                                     <h3>{t.location?.[lang].country}</h3>
                                     <h5>{t.location?.[lang].address}</h5>
-                                    <div>{formatDate(t.date)}</div>
-                                    {t.availability == "Нема" &&
+                                    <div>{formatDate(t.date, lang)}</div>
+                                    {t.quantity < 1 &&
                                         <div> <h4>Нема в наявності</h4></div>
                                     }
-
+                                    {t.status == "Скасовано" &&
+                                        <div> <h4 style={{ "color": "red" }}>{translator?.[lang]?.cancelStatus}</h4></div>
+                                    }
+                                    {t.status == "Завершено" &&
+                                        <div> <h4 style={{ "color": "green" }}>{translator?.[lang]?.endStatus}</h4></div>
+                                    }
                                 </div>
                             </label>
                         </li>
@@ -171,8 +200,8 @@ export default function EventDetails() {
             </ul>
 
             <div className="info">
-                <h1>{event?.[lang]?.title || "Без назви"}</h1>
-                <TextMore text={event?.[lang]?.description} />
+                <h1>{event?.title || "Без назви"}</h1>
+                <TextMore text={event?.description} />
             </div>
         </div>
     );
